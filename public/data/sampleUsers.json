@@ -1,0 +1,82 @@
+[
+  {
+    "id": "user-1",
+    "username": "CodeMaster",
+    "avatar": "🧙‍♂️",
+    "level": 12,
+    "xp": 2450,
+    "totalXP": 2450,
+    "streak": 7,
+    "badges": ["First Quest", "Speed Demon", "Perfect Score", "Week Warrior"],
+    "completedQuests": 24,
+    "preferences": {
+      "learningStyle": "visual",
+      "difficulty": "intermediate",
+      "topics": ["javascript", "react", "algorithms"]
+    }
+  },
+  {
+    "id": "user-2",
+    "username": "DataNinja",
+    "avatar": "🥷",
+    "level": 15,
+    "xp": 3890,
+    "totalXP": 3890,
+    "streak": 12,
+    "badges": ["First Quest", "Speed Demon", "Perfect Score", "Week Warrior", "Month Master"],
+    "completedQuests": 38,
+    "preferences": {
+      "learningStyle": "hands-on",
+      "difficulty": "advanced",
+      "topics": ["python", "data-science", "ml"]
+    }
+  },
+  {
+    "id": "user-3",
+    "username": "AlgoWizard",
+    "avatar": "🧠",
+    "level": 10,
+    "xp": 1950,
+    "totalXP": 1950,
+    "streak": 5,
+    "badges": ["First Quest", "Perfect Score", "Week Warrior"],
+    "completedQuests": 19,
+    "preferences": {
+      "learningStyle": "reading",
+      "difficulty": "intermediate",
+      "topics": ["algorithms", "data-structures", "python"]
+    }
+  },
+  {
+    "id": "user-4",
+    "username": "WebDev101",
+    "avatar": "💻",
+    "level": 8,
+    "xp": 1420,
+    "totalXP": 1420,
+    "streak": 3,
+    "badges": ["First Quest", "Week Warrior"],
+    "completedQuests": 14,
+    "preferences": {
+      "learningStyle": "visual",
+      "difficulty": "beginner",
+      "topics": ["html", "css", "javascript"]
+    }
+  },
+  {
+    "id": "user-5",
+    "username": "PyThon",
+    "avatar": "🐍",
+    "level": 11,
+    "xp": 2180,
+    "totalXP": 2180,
+    "streak": 9,
+    "badges": ["First Quest", "Speed Demon", "Perfect Score", "Week Warrior"],
+    "completedQuests": 21,
+    "preferences": {
+      "learningStyle": "hands-on",
+      "difficulty": "intermediate",
+      "topics": ["python", "backend", "databases"]
+    }
+  }
+]

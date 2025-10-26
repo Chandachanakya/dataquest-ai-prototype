@@ -1,0 +1,174 @@
+[
+  {
+    "id": "quest-1",
+    "title": "Array Adventures",
+    "description": "Master the fundamentals of array manipulation and iteration",
+    "difficulty": "beginner",
+    "topic": "javascript",
+    "xpReward": 100,
+    "type": "quiz",
+    "questions": [
+      {
+        "question": "What method adds an element to the end of an array?",
+        "options": ["push()", "pop()", "shift()", "unshift()"],
+        "correctAnswer": 0
+      },
+      {
+        "question": "Which method removes the first element from an array?",
+        "options": ["push()", "pop()", "shift()", "unshift()"],
+        "correctAnswer": 2
+      },
+      {
+        "question": "What does the map() method return?",
+        "options": ["The original array", "A new array", "undefined", "A string"],
+        "correctAnswer": 1
+      }
+    ]
+  },
+  {
+    "id": "quest-2",
+    "title": "Function Fundamentals",
+    "description": "Learn to write clean, reusable functions in JavaScript",
+    "difficulty": "beginner",
+    "topic": "javascript",
+    "xpReward": 150,
+    "type": "code",
+    "challenge": {
+      "prompt": "Write a function called 'greet' that takes a name parameter and returns 'Hello, [name]!'",
+      "starterCode": "function greet(name) {\n  // Your code here\n}",
+      "testCases": [
+        { "input": "Alice", "expected": "Hello, Alice!" },
+        { "input": "Bob", "expected": "Hello, Bob!" }
+      ]
+    }
+  },
+  {
+    "id": "quest-3",
+    "title": "Loop Mastery",
+    "description": "Conquer different types of loops and when to use them",
+    "difficulty": "intermediate",
+    "topic": "javascript",
+    "xpReward": 200,
+    "type": "quiz",
+    "questions": [
+      {
+        "question": "Which loop is best for iterating over object properties?",
+        "options": ["for", "while", "for...in", "forEach"],
+        "correctAnswer": 2
+      },
+      {
+        "question": "What does 'break' do in a loop?",
+        "options": ["Skips current iteration", "Exits the loop", "Restarts the loop", "Does nothing"],
+        "correctAnswer": 1
+      },
+      {
+        "question": "Which loop guarantees at least one execution?",
+        "options": ["for", "while", "do...while", "for...of"],
+        "correctAnswer": 2
+      }
+    ]
+  },
+  {
+    "id": "quest-4",
+    "title": "React Component Challenge",
+    "description": "Build your first functional React component",
+    "difficulty": "intermediate",
+    "topic": "react",
+    "xpReward": 250,
+    "type": "code",
+    "challenge": {
+      "prompt": "Create a Counter component that displays a count and has increment/decrement buttons",
+      "starterCode": "import { useState } from 'react';\n\nfunction Counter() {\n  // Your code here\n}",
+      "testCases": [
+        { "description": "Component renders without errors" },
+        { "description": "Count increments when + button is clicked" }
+      ]
+    }
+  },
+  {
+    "id": "quest-5",
+    "title": "CSS Flexbox Quest",
+    "description": "Master the art of flexible layouts with Flexbox",
+    "difficulty": "beginner",
+    "topic": "css",
+    "xpReward": 120,
+    "type": "quiz",
+    "questions": [
+      {
+        "question": "Which property makes an element a flex container?",
+        "options": ["display: flex", "flex: 1", "flex-direction: row", "justify-content: center"],
+        "correctAnswer": 0
+      },
+      {
+        "question": "What does 'justify-content: space-between' do?",
+        "options": ["Centers items", "Spaces items evenly with gaps", "Distributes space between items", "Aligns items to start"],
+        "correctAnswer": 2
+      },
+      {
+        "question": "Which property controls the main axis direction?",
+        "options": ["align-items", "flex-direction", "flex-wrap", "justify-content"],
+        "correctAnswer": 1
+      }
+    ]
+  },
+  {
+    "id": "quest-6",
+    "title": "Algorithm Adventure: Sorting",
+    "description": "Understand and implement basic sorting algorithms",
+    "difficulty": "advanced",
+    "topic": "algorithms",
+    "xpReward": 300,
+    "type": "code",
+    "challenge": {
+      "prompt": "Implement a bubble sort algorithm that sorts an array in ascending order",
+      "starterCode": "function bubbleSort(arr) {\n  // Your code here\n  return arr;\n}",
+      "testCases": [
+        { "input": [64, 34, 25, 12, 22, 11, 90], "expected": [11, 12, 22, 25, 34, 64, 90] },
+        { "input": [5, 1, 4, 2, 8], "expected": [1, 2, 4, 5, 8] }
+      ]
+    }
+  },
+  {
+    "id": "quest-7",
+    "title": "Python Basics Battle",
+    "description": "Get started with Python syntax and data types",
+    "difficulty": "beginner",
+    "topic": "python",
+    "xpReward": 100,
+    "type": "quiz",
+    "questions": [
+      {
+        "question": "How do you create a list in Python?",
+        "options": ["list = (1, 2, 3)", "list = [1, 2, 3]", "list = {1, 2, 3}", "list = <1, 2, 3>"],
+        "correctAnswer": 1
+      },
+      {
+        "question": "What is the correct way to comment in Python?",
+        "options": ["// comment", "/* comment */", "# comment", "<!-- comment -->"],
+        "correctAnswer": 2
+      },
+      {
+        "question": "Which keyword is used to define a function?",
+        "options": ["function", "def", "func", "define"],
+        "correctAnswer": 1
+      }
+    ]
+  },
+  {
+    "id": "quest-8",
+    "title": "Data Structures: Stacks",
+    "description": "Implement and understand the stack data structure",
+    "difficulty": "intermediate",
+    "topic": "data-structures",
+    "xpReward": 220,
+    "type": "code",
+    "challenge": {
+      "prompt": "Implement a Stack class with push, pop, and peek methods",
+      "starterCode": "class Stack {\n  constructor() {\n    this.items = [];\n  }\n  // Add your methods here\n}",
+      "testCases": [
+        { "description": "push() adds items to stack" },
+        { "description": "pop() removes and returns last item" }
+      ]
+    }
+  }
+]
