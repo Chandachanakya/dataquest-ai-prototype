@@ -10,6 +10,7 @@ import { aiEngine } from "@/lib/ai";
 import { User, Quest } from "@/lib/types";
 import { Flame, Trophy, Target, LogOut, Award } from "lucide-react";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -66,7 +67,8 @@ const Dashboard = () => {
           <h1 className="text-2xl font-bold bg-gradient-hero bg-clip-text text-transparent">
             DataQuestAI
           </h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button variant="outline" size="sm" onClick={() => navigate('/leaderboard')}>
               <Trophy className="h-4 w-4 mr-2" aria-hidden="true" />
               Leaderboard
