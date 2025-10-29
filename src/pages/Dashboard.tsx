@@ -64,7 +64,7 @@ const Dashboard = () => {
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-hero bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold text-primary">
             DataQuestAI
           </h1>
           <div className="flex items-center gap-2">
@@ -94,13 +94,13 @@ const Dashboard = () => {
 
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* User Stats */}
-        <div className="flex items-center gap-6 bg-gradient-card p-6 rounded-2xl shadow-md">
+        <div className="flex items-center gap-6 bg-card border border-border p-6 rounded-2xl shadow-md">
           <div className="text-6xl" role="img" aria-label={`Avatar ${user.avatar}`}>
             {user.avatar}
           </div>
           <div className="flex-1 space-y-3">
             <div>
-              <h2 className="text-3xl font-bold">{user.username}</h2>
+              <h2 className="text-3xl font-bold text-foreground">{user.username}</h2>
               <p className="text-muted-foreground">Quest Master in Training</p>
             </div>
             <XPBar currentXP={user.xp} level={user.level} />
@@ -152,7 +152,7 @@ const Dashboard = () => {
         {/* Recommended Quest */}
         {recommendedQuest && (
           <div>
-            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
               <span className="text-2xl" aria-hidden="true">✨</span>
               Recommended for You
             </h3>
@@ -185,7 +185,7 @@ const Dashboard = () => {
 
         {/* All Quests */}
         <div>
-          <h3 className="text-xl font-semibold mb-4">All Quests</h3>
+          <h3 className="text-xl font-semibold text-foreground mb-4">All Quests</h3>
           <div className="grid md:grid-cols-2 gap-4">
             {quests.map((quest) => (
               <QuestCard
