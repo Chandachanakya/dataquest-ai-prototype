@@ -8,7 +8,7 @@ import QuestCard from "@/components/QuestCard";
 import { storage } from "@/lib/storage";
 import { aiEngine } from "@/lib/ai";
 import { User, Quest } from "@/lib/types";
-import { Flame, Trophy, Target, LogOut, Award } from "lucide-react";
+import { Flame, Trophy, Target, LogOut, Award, BarChart3, MessageSquare, Swords } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -69,6 +69,18 @@ const Dashboard = () => {
           </h1>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <Button variant="outline" size="sm" onClick={() => navigate('/analytics')}>
+              <BarChart3 className="h-4 w-4 mr-2" aria-hidden="true" />
+              Analytics
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/forum')}>
+              <MessageSquare className="h-4 w-4 mr-2" aria-hidden="true" />
+              Forum
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigate('/challenges')}>
+              <Swords className="h-4 w-4 mr-2" aria-hidden="true" />
+              Challenges
+            </Button>
             <Button variant="outline" size="sm" onClick={() => navigate('/leaderboard')}>
               <Trophy className="h-4 w-4 mr-2" aria-hidden="true" />
               Leaderboard

@@ -10,6 +10,9 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import QuestPage from "./pages/QuestPage";
 import Leaderboard from "./pages/Leaderboard";
+import Analytics from "./pages/Analytics";
+import Forum from "./pages/Forum";
+import Challenges from "./pages/Challenges";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +32,9 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/quest/:questId" element={<QuestPage />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/forum" element={<Forum />} />
+            <Route path="/challenges" element={<Challenges />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

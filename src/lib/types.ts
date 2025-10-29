@@ -53,4 +53,67 @@ export interface UserProgress {
   score: number;
   xpEarned: number;
   completedAt?: string;
+  attempts?: number;
+  timeSpent?: number;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt?: string;
+  progress?: number;
+  target?: number;
+}
+
+export interface ForumPost {
+  id: string;
+  userId: string;
+  username: string;
+  avatar: string;
+  title: string;
+  content: string;
+  topic: string;
+  likes: number;
+  replies: ForumReply[];
+  createdAt: string;
+}
+
+export interface ForumReply {
+  id: string;
+  userId: string;
+  username: string;
+  avatar: string;
+  content: string;
+  likes: number;
+  createdAt: string;
+}
+
+export interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  questId: string;
+  creatorId: string;
+  creatorName: string;
+  targetScore: number;
+  participants: ChallengeParticipant[];
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface ChallengeParticipant {
+  userId: string;
+  username: string;
+  avatar: string;
+  score?: number;
+  completedAt?: string;
+}
+
+export interface DailyChallenge {
+  id: string;
+  questId: string;
+  date: string;
+  bonusXP: number;
 }
