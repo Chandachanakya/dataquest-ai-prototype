@@ -18,22 +18,21 @@ const Landing = () => {
             </div>
             
             <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-              Master Skills Through
-              <span className="bg-gradient-hero bg-clip-text text-transparent"> AI-Powered Quests</span>
+              <span className="bg-gradient-hero bg-clip-text text-transparent">Gamify Your Data Science Journey</span>
             </h1>
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Level up your coding skills with personalized challenges, real-time feedback, and gamified learning. Join thousands of learners on their quest to mastery.
+              Master data science through AI-powered challenges, adaptive learning paths, and gamified experiences. Level up your skills with personalized quests tailored just for you.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <Button 
                 size="lg" 
-                variant="hero" 
+                className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow"
                 onClick={() => navigate('/signup')}
                 aria-label="Start your learning journey"
               >
-                Start Your Journey
+                Start Learning
               </Button>
               <Button 
                 size="lg" 
