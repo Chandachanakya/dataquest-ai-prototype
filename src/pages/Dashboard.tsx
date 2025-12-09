@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import XPBar from "@/components/XPBar";
 import QuestCard from "@/components/QuestCard";
+import UserAvatar from "@/components/UserAvatar";
 import { storage } from "@/lib/storage";
 import { aiEngine } from "@/lib/ai";
 import { User, Quest } from "@/lib/types";
-import { Flame, Trophy, Target, LogOut, Award, BarChart3, MessageSquare, Swords, Sparkles } from "lucide-react";
+import { Flame, Trophy, Target, LogOut, Award, BarChart3, MessageSquare, Swords, Sparkles, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -99,13 +100,23 @@ const Dashboard = () => {
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* User Stats */}
         <div className="flex items-center gap-6 bg-card border border-border p-6 rounded-2xl shadow-md">
-          <div className="text-6xl" role="img" aria-label={`Avatar ${user.avatar}`}>
-            {user.avatar}
-          </div>
+          <button 
+            onClick={() => navigate('/profile')}
+            className="transition-transform hover:scale-105"
+            aria-label="Edit profile"
+          >
+            <UserAvatar avatar={user.avatar} username={user.username} size="lg" showGlow />
+          </button>
           <div className="flex-1 space-y-3">
-            <div>
-              <h2 className="text-3xl font-bold text-foreground">{user.username}</h2>
-              <p className="text-muted-foreground">Quest Master in Training</p>
+            <div className="flex items-center gap-3">
+              <div>
+                <h2 className="text-3xl font-bold text-foreground">{user.username}</h2>
+                <p className="text-muted-foreground">Quest Master in Training</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/profile')} className="ml-auto">
+                <UserCog className="h-4 w-4 mr-1" />
+                Edit Profile
+              </Button>
             </div>
             <XPBar currentXP={user.xp} level={user.level} />
           </div>
