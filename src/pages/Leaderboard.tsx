@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User } from "@/lib/types";
 import { ArrowLeft, Trophy, Medal, Award } from "lucide-react";
+import UserAvatar from "@/components/UserAvatar";
 
 const Leaderboard = () => {
   const navigate = useNavigate();
@@ -13,7 +14,6 @@ const Leaderboard = () => {
     fetch('/data/sampleUsers.json')
       .then(res => res.json())
       .then(data => {
-        // Sort by totalXP
         const sorted = [...data].sort((a, b) => b.totalXP - a.totalXP);
         setUsers(sorted);
       });
@@ -34,7 +34,6 @@ const Leaderboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
@@ -66,9 +65,13 @@ const Leaderboard = () => {
                   <div className="w-12 flex items-center justify-center">
                     {getRankIcon(index + 1)}
                   </div>
-                  <div className="text-4xl" role="img" aria-label={`${user.username}'s avatar`}>
-                    {user.avatar}
-                  </div>
+                  <UserAvatar 
+                    avatar={user.avatar} 
+                    username={user.username}
+                    size={index < 3 ? "lg" : "md"}
+                    rank={index + 1}
+                    showGlow={index < 3}
+                  />
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{user.username}</h3>
                     <p className="text-sm text-muted-foreground">
