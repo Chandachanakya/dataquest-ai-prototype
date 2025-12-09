@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, Trophy, Zap, Brain } from "lucide-react";
+import AnimatedBackground from "@/components/AnimatedBackground";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -8,8 +9,8 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-hero opacity-10" aria-hidden="true"></div>
+      <section className="relative overflow-hidden min-h-[90vh] flex items-center">
+        <AnimatedBackground />
         <div className="container mx-auto px-4 py-20 relative">
           <div className="max-w-4xl mx-auto text-center space-y-8">
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
