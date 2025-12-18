@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { storage } from "@/lib/storage";
-import { User } from "@/lib/types";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Send, Sparkles, Loader2 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -18,7 +19,8 @@ interface Message {
 
 const AIMentor = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -32,13 +34,10 @@ const AIMentor = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const currentUser = storage.getCurrentUser();
-    if (!currentUser) {
+    if (!authLoading && !user) {
       navigate("/signin");
-      return;
     }
-    setUser(currentUser);
-  }, [navigate]);
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -46,7 +45,7 @@ const AIMentor = () => {
     }
   }, [messages]);
 
-  const generateAIResponse = (userMessage: string): string => {
+  const generateAIResponse = async (userMessage: string): Promise<string> => {
     const lowerMessage = userMessage.toLowerCase();
     
     // Topic-based responses
@@ -71,12 +70,20 @@ const AIMentor = () => {
     }
     
     if (lowerMessage.includes("recommend") || lowerMessage.includes("next") || lowerMessage.includes("should i learn")) {
-      const progress = storage.getUserProgress();
-      const completed = progress.filter(p => p.completed).length;
+      // Fetch user progress from database
+      let completedCount = 0;
+      if (user) {
+        const { data } = await supabase
+          .from('user_progress')
+          .select('quest_id')
+          .eq('user_id', user.id)
+          .eq('completed', true);
+        completedCount = data?.length || 0;
+      }
       
-      if (completed === 0) {
+      if (completedCount === 0) {
         return "🌟 Since you're just starting out, I recommend:\n\n1. **Python Basics** - Build a strong foundation\n2. **SQL Fundamentals** - Learn to work with data\n3. **Data Analysis Basics** - Start analyzing real datasets\n\nThese three quests will give you a solid base for your data science journey!";
-      } else if (completed < 5) {
+      } else if (completedCount < 5) {
         return "📈 Great progress! Based on your learning style, I suggest:\n\n1. Continue building Python skills with intermediate challenges\n2. Explore data visualization techniques\n3. Try collaborative challenges in the Forum\n\nYou're on the right track - keep up the momentum!";
       } else {
         return "🚀 You're doing amazing! Time to level up:\n\n1. **Machine Learning** - Start with supervised learning\n2. **Advanced SQL** - Complex queries and optimization\n3. **Real-world Projects** - Apply your skills to Kaggle datasets\n\nYou're ready for more advanced topics. Challenge yourself!";
@@ -108,18 +115,17 @@ const AIMentor = () => {
     setInput("");
     setIsLoading(true);
 
-    // Simulate AI thinking time
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: generateAIResponse(userMessage.content),
-        timestamp: new Date(),
-      };
+    const responseContent = await generateAIResponse(userMessage.content);
+    
+    const aiResponse: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: responseContent,
+      timestamp: new Date(),
+    };
 
-      setMessages((prev) => [...prev, aiResponse]);
-      setIsLoading(false);
-    }, 800);
+    setMessages((prev) => [...prev, aiResponse]);
+    setIsLoading(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -129,7 +135,15 @@ const AIMentor = () => {
     }
   };
 
-  if (!user) return null;
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !profile) return null;
 
   return (
     <div className="min-h-screen bg-background">

@@ -2,15 +2,28 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { storage } from "@/lib/storage";
-import { User, UserProgress } from "@/lib/types";
-import { ArrowLeft, TrendingUp, Target, Award, Clock, BarChart3 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, TrendingUp, Target, Award, Clock, BarChart3, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+
+interface UserProgressData {
+  quest_id: string;
+  completed: boolean;
+  score: number;
+  xp_earned: number;
+  attempts: number;
+  time_spent: number;
+  completed_at: string | null;
+}
 
 const Analytics = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [progress, setProgress] = useState<UserProgress[]>([]);
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
+  const [progress, setProgress] = useState<UserProgressData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalAttempts: 0,
     averageScore: 0,
@@ -20,14 +33,33 @@ const Analytics = () => {
   });
 
   useEffect(() => {
-    const currentUser = storage.getCurrentUser();
-    if (!currentUser) {
+    if (!authLoading && !user) {
       navigate('/signin');
       return;
     }
+  }, [user, authLoading, navigate]);
 
-    setUser(currentUser);
-    const userProgress = storage.getUserProgress();
+  useEffect(() => {
+    if (user) {
+      loadProgress();
+    }
+  }, [user]);
+
+  const loadProgress = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error loading progress:', error);
+      setLoading(false);
+      return;
+    }
+
+    const userProgress = data || [];
     setProgress(userProgress);
 
     // Calculate stats
@@ -36,12 +68,12 @@ const Analytics = () => {
     const averageScore = completed.length > 0 
       ? completed.reduce((sum, p) => sum + p.score, 0) / completed.length 
       : 0;
-    const totalTimeSpent = completed.reduce((sum, p) => sum + (p.timeSpent || 0), 0);
+    const totalTimeSpent = completed.reduce((sum, p) => sum + (p.time_spent || 0), 0);
     const perfectScores = completed.filter(p => p.score === 100).length;
     
-    // Calculate improvement rate (compare recent vs older scores)
+    // Calculate improvement rate
     const sorted = [...completed].sort((a, b) => 
-      new Date(a.completedAt || '').getTime() - new Date(b.completedAt || '').getTime()
+      new Date(a.completed_at || '').getTime() - new Date(b.completed_at || '').getTime()
     );
     const halfPoint = Math.floor(sorted.length / 2);
     const olderAvg = sorted.slice(0, halfPoint).reduce((sum, p) => sum + p.score, 0) / (halfPoint || 1);
@@ -55,17 +87,21 @@ const Analytics = () => {
       perfectScores,
       improvementRate,
     });
-  }, [navigate]);
 
-  if (!user) return null;
+    setLoading(false);
+  };
+
+  if (authLoading || profileLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !profile) return null;
 
   const completedQuests = progress.filter(p => p.completed);
-  const topicBreakdown = completedQuests.reduce((acc, p) => {
-    // This would ideally get topic from quest data
-    const topic = 'Data Science'; // Simplified
-    acc[topic] = (acc[topic] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
 
   return (
     <div className="min-h-screen bg-background">
@@ -158,38 +194,13 @@ const Analytics = () => {
               <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-primary">{user.totalXP}</div>
+              <div className="text-3xl font-bold text-primary">{profile.total_xp}</div>
               <p className="text-xs text-muted-foreground mt-2">
-                Level {user.level} achieved
+                Level {profile.level} achieved
               </p>
             </CardContent>
           </Card>
         </div>
-
-        {/* Topic Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Learning Focus</CardTitle>
-            <CardDescription>Quests completed by topic</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {Object.keys(topicBreakdown).length > 0 ? (
-              <div className="space-y-4">
-                {Object.entries(topicBreakdown).map(([topic, count]) => (
-                  <div key={topic}>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium">{topic}</span>
-                      <span className="text-sm text-muted-foreground">{count} quests</span>
-                    </div>
-                    <Progress value={(count / completedQuests.length) * 100} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">Complete quests to see your learning focus</p>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Recent Activity */}
         <Card>
@@ -201,25 +212,25 @@ const Analytics = () => {
             {completedQuests.length > 0 ? (
               <div className="space-y-3">
                 {completedQuests
-                  .sort((a, b) => new Date(b.completedAt || '').getTime() - new Date(a.completedAt || '').getTime())
+                  .sort((a, b) => new Date(b.completed_at || '').getTime() - new Date(a.completed_at || '').getTime())
                   .slice(0, 5)
                   .map((quest) => (
-                    <div key={quest.questId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div key={quest.quest_id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                       <div>
-                        <p className="font-medium">Quest ID: {quest.questId}</p>
+                        <p className="font-medium">Quest: {quest.quest_id}</p>
                         <p className="text-sm text-muted-foreground">
-                          {quest.completedAt ? new Date(quest.completedAt).toLocaleDateString() : 'Unknown date'}
+                          {quest.completed_at ? new Date(quest.completed_at).toLocaleDateString() : 'Unknown date'}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-primary">{quest.score}%</p>
-                        <p className="text-xs text-muted-foreground">+{quest.xpEarned} XP</p>
+                        <p className="text-xs text-muted-foreground">+{quest.xp_earned} XP</p>
                       </div>
                     </div>
                   ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">No completed quests yet</p>
+              <p className="text-muted-foreground">No completed quests yet. Start a quest to see your progress!</p>
             )}
           </CardContent>
         </Card>
