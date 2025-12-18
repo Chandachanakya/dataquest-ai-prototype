@@ -14,7 +14,180 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      achievements: {
+        Row: {
+          achievement_id: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          unlocked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          unlocked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          unlocked_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_progress: {
+        Row: {
+          completed_modules: number | null
+          course_id: string
+          created_at: string | null
+          id: string
+          last_accessed_at: string | null
+          total_modules: number
+          user_id: string
+        }
+        Insert: {
+          completed_modules?: number | null
+          course_id: string
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          total_modules: number
+          user_id: string
+        }
+        Update: {
+          completed_modules?: number | null
+          course_id?: string
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          total_modules?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar: string | null
+          badges: string[] | null
+          completed_quests: number | null
+          created_at: string | null
+          difficulty: string | null
+          id: string
+          learning_style: string | null
+          level: number | null
+          streak: number | null
+          topics: string[] | null
+          total_xp: number | null
+          updated_at: string | null
+          username: string
+          xp: number | null
+        }
+        Insert: {
+          avatar?: string | null
+          badges?: string[] | null
+          completed_quests?: number | null
+          created_at?: string | null
+          difficulty?: string | null
+          id: string
+          learning_style?: string | null
+          level?: number | null
+          streak?: number | null
+          topics?: string[] | null
+          total_xp?: number | null
+          updated_at?: string | null
+          username: string
+          xp?: number | null
+        }
+        Update: {
+          avatar?: string | null
+          badges?: string[] | null
+          completed_quests?: number | null
+          created_at?: string | null
+          difficulty?: string | null
+          id?: string
+          learning_style?: string | null
+          level?: number | null
+          streak?: number | null
+          topics?: string[] | null
+          total_xp?: number | null
+          updated_at?: string | null
+          username?: string
+          xp?: number | null
+        }
+        Relationships: []
+      }
+      user_progress: {
+        Row: {
+          attempts: number | null
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          quest_id: string
+          score: number | null
+          time_spent: number | null
+          user_id: string
+          xp_earned: number | null
+        }
+        Insert: {
+          attempts?: number | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          quest_id: string
+          score?: number | null
+          time_spent?: number | null
+          user_id: string
+          xp_earned?: number | null
+        }
+        Update: {
+          attempts?: number | null
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          quest_id?: string
+          score?: number | null
+          time_spent?: number | null
+          user_id?: string
+          xp_earned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
