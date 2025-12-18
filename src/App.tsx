@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { AuthProvider } from "@/hooks/useAuth";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -23,29 +24,31 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/signin" element={<Auth mode="signin" />} />
-            <Route path="/signup" element={<Auth mode="signup" />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/quest/:questId" element={<QuestPage />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/forum" element={<Forum />} />
-            <Route path="/challenges" element={<Challenges />} />
-            <Route path="/ai-mentor" element={<AIMentor />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/courses" element={<Courses />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/signin" element={<Auth mode="signin" />} />
+              <Route path="/signup" element={<Auth mode="signup" />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/quest/:questId" element={<QuestPage />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/forum" element={<Forum />} />
+              <Route path="/challenges" element={<Challenges />} />
+              <Route path="/ai-mentor" element={<AIMentor />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/courses" element={<Courses />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { storage } from "@/lib/storage";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 const AVATARS = ["🎓", "🧙‍♂️", "🥷", "🧠", "💻", "🐍", "🚀", "⚡", "🎯", "🏆"];
 const LEARNING_STYLES = [
@@ -25,34 +27,54 @@ const TOPICS = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading, updateProfile } = useProfile();
   const [step, setStep] = useState(1);
   const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
   const [learningStyle, setLearningStyle] = useState<string>("");
   const [difficulty, setDifficulty] = useState<string>("");
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleComplete = () => {
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/signin');
+    }
+  }, [user, authLoading, navigate]);
+
+  // Pre-populate with existing profile data if available
+  useEffect(() => {
+    if (profile) {
+      if (profile.avatar) setSelectedAvatar(profile.avatar);
+      if (profile.learning_style) setLearningStyle(profile.learning_style);
+      if (profile.difficulty) setDifficulty(profile.difficulty);
+      if (profile.topics?.length) setSelectedTopics(profile.topics);
+    }
+  }, [profile]);
+
+  const handleComplete = async () => {
     if (!learningStyle || !difficulty || selectedTopics.length === 0) {
       toast.error("Please complete all fields");
       return;
     }
 
-    const user = storage.getCurrentUser();
-    if (user) {
-      const updatedUser = {
-        ...user,
-        avatar: selectedAvatar,
-        preferences: {
-          learningStyle: learningStyle as any,
-          difficulty: difficulty as any,
-          topics: selectedTopics,
-        },
-      };
-      storage.setCurrentUser(updatedUser);
-      storage.setOnboardingComplete();
-      toast.success("Profile created! Let's start learning!");
-      navigate('/dashboard');
+    setIsSubmitting(true);
+
+    const { error } = await updateProfile({
+      avatar: selectedAvatar,
+      learning_style: learningStyle as 'visual' | 'hands-on' | 'reading',
+      difficulty: difficulty as 'beginner' | 'intermediate' | 'advanced',
+      topics: selectedTopics,
+    });
+
+    if (error) {
+      toast.error("Failed to save preferences. Please try again.");
+      setIsSubmitting(false);
+      return;
     }
+
+    toast.success("Profile created! Let's start learning!");
+    navigate('/dashboard');
   };
 
   const toggleTopic = (topic: string) => {
@@ -62,6 +84,14 @@ const Onboarding = () => {
         : [...prev, topic]
     );
   };
+
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -173,17 +203,24 @@ const Onboarding = () => {
 
           <div className="flex justify-between pt-4">
             {step > 1 && (
-              <Button variant="outline" onClick={() => setStep(step - 1)}>
+              <Button variant="outline" onClick={() => setStep(step - 1)} disabled={isSubmitting}>
                 Back
               </Button>
             )}
             <Button
               variant="hero"
               onClick={() => step === 3 ? handleComplete() : setStep(step + 1)}
-              disabled={step === 3 && selectedTopics.length === 0}
+              disabled={(step === 3 && selectedTopics.length === 0) || isSubmitting}
               className="ml-auto"
             >
-              {step === 3 ? "Complete Setup" : "Continue"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                step === 3 ? "Complete Setup" : "Continue"
+              )}
             </Button>
           </div>
         </CardContent>

@@ -6,59 +6,115 @@ import { Badge } from "@/components/ui/badge";
 import XPBar from "@/components/XPBar";
 import QuestCard from "@/components/QuestCard";
 import UserAvatar from "@/components/UserAvatar";
-import { storage } from "@/lib/storage";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { aiEngine } from "@/lib/ai";
-import { User, Quest } from "@/lib/types";
-import { Flame, Trophy, Target, LogOut, Award, BarChart3, MessageSquare, Swords, Sparkles, UserCog, GraduationCap } from "lucide-react";
+import { Quest } from "@/lib/types";
+import { Flame, Trophy, Target, LogOut, Award, BarChart3, MessageSquare, Swords, Sparkles, UserCog, GraduationCap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
   const [quests, setQuests] = useState<Quest[]>([]);
   const [recommendedQuest, setRecommendedQuest] = useState<Quest | null>(null);
   const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const currentUser = storage.getCurrentUser();
-    if (!currentUser) {
+    if (!authLoading && !user) {
       navigate('/signin');
       return;
     }
+  }, [user, authLoading, navigate]);
 
-    setUser(currentUser);
+  useEffect(() => {
+    if (user && profile) {
+      loadData();
+    }
+  }, [user, profile]);
 
-    // Load quests
-    fetch('/data/sampleQuests.json')
-      .then(res => res.json())
-      .then(data => {
-        setQuests(data);
-        
-        // Get completed quests
-        const progress = storage.getUserProgress();
-        const completed = progress.filter(p => p.completed).map(p => p.questId);
-        setCompletedQuestIds(completed);
+  const loadData = async () => {
+    // Load quests from JSON
+    const questsRes = await fetch('/data/sampleQuests.json');
+    const questsData = await questsRes.json();
+    setQuests(questsData);
 
-        // Get AI recommendation
-        const recommended = aiEngine.recommendNextQuest(currentUser, data, completed);
+    // Load completed quests from database
+    if (user) {
+      const { data: progressData } = await supabase
+        .from('user_progress')
+        .select('quest_id')
+        .eq('user_id', user.id)
+        .eq('completed', true);
+
+      const completed = progressData?.map(p => p.quest_id) || [];
+      setCompletedQuestIds(completed);
+
+      // Get AI recommendation using profile preferences
+      if (profile) {
+        const userForAI = {
+          id: user.id,
+          username: profile.username,
+          avatar: profile.avatar,
+          level: profile.level,
+          xp: profile.xp,
+          totalXP: profile.total_xp,
+          streak: profile.streak,
+          badges: profile.badges || [],
+          completedQuests: profile.completed_quests,
+          preferences: {
+            learningStyle: profile.learning_style,
+            difficulty: profile.difficulty,
+            topics: profile.topics || [],
+          },
+        };
+        const recommended = aiEngine.recommendNextQuest(userForAI, questsData, completed);
         setRecommendedQuest(recommended);
-      });
-  }, [navigate]);
+      }
+    }
+  };
 
   const handleStartQuest = (questId: string) => {
     navigate(`/quest/${questId}`);
   };
 
-  const handleLogout = () => {
-    storage.clearCurrentUser();
+  const handleLogout = async () => {
+    await signOut();
     toast.success("Logged out successfully");
     navigate('/');
   };
 
-  if (!user) return null;
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  const insights = aiEngine.generateInsights(user);
+  if (!user || !profile) return null;
+
+  const userForInsights = {
+    id: user.id,
+    username: profile.username,
+    avatar: profile.avatar,
+    level: profile.level,
+    xp: profile.xp,
+    totalXP: profile.total_xp,
+    streak: profile.streak,
+    badges: profile.badges || [],
+    completedQuests: profile.completed_quests,
+    preferences: {
+      learningStyle: profile.learning_style,
+      difficulty: profile.difficulty,
+      topics: profile.topics || [],
+    },
+  };
+
+  const insights = aiEngine.generateInsights(userForInsights);
 
   return (
     <div className="min-h-screen bg-background">
@@ -109,12 +165,12 @@ const Dashboard = () => {
             className="transition-transform hover:scale-105"
             aria-label="Edit profile"
           >
-            <UserAvatar avatar={user.avatar} username={user.username} size="lg" showGlow />
+            <UserAvatar avatar={profile.avatar} username={profile.username} size="lg" showGlow />
           </button>
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-3">
               <div>
-                <h2 className="text-3xl font-bold text-foreground">{user.username}</h2>
+                <h2 className="text-3xl font-bold text-foreground">{profile.username}</h2>
                 <p className="text-muted-foreground">Quest Master in Training</p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => navigate('/profile')} className="ml-auto">
@@ -122,27 +178,27 @@ const Dashboard = () => {
                 Edit Profile
               </Button>
             </div>
-            <XPBar currentXP={user.xp} level={user.level} />
+            <XPBar currentXP={profile.xp} level={profile.level} />
           </div>
           <div className="hidden md:flex gap-6">
             <div className="text-center">
               <div className="flex items-center gap-2 text-accent font-bold text-2xl">
                 <Flame className="h-6 w-6" aria-hidden="true" />
-                {user.streak}
+                {profile.streak}
               </div>
               <p className="text-sm text-muted-foreground">Day Streak</p>
             </div>
             <div className="text-center">
               <div className="flex items-center gap-2 text-primary font-bold text-2xl">
                 <Target className="h-6 w-6" aria-hidden="true" />
-                {user.completedQuests}
+                {profile.completed_quests}
               </div>
               <p className="text-sm text-muted-foreground">Completed</p>
             </div>
             <div className="text-center">
               <div className="flex items-center gap-2 text-success font-bold text-2xl">
                 <Award className="h-6 w-6" aria-hidden="true" />
-                {user.badges.length}
+                {(profile.badges || []).length}
               </div>
               <p className="text-sm text-muted-foreground">Badges</p>
             </div>
@@ -184,7 +240,7 @@ const Dashboard = () => {
         )}
 
         {/* Badges */}
-        {user.badges.length > 0 && (
+        {(profile.badges || []).length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Your Badges</CardTitle>
@@ -192,7 +248,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {user.badges.map((badge) => (
+                {(profile.badges || []).map((badge) => (
                   <Badge key={badge} variant="secondary" className="text-sm px-3 py-1">
                     🏆 {badge}
                   </Badge>
