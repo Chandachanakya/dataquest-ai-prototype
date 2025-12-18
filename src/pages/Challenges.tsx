@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { storage } from "@/lib/storage";
-import { User, Challenge, Quest } from "@/lib/types";
-import { ArrowLeft, Swords, Trophy, Users, Plus, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Challenge, Quest } from "@/lib/types";
+import { ArrowLeft, Swords, Trophy, Users, Plus, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -19,9 +22,11 @@ import {
 
 const Challenges = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
+  const [userProgress, setUserProgress] = useState<Record<string, { completed: boolean; score: number }>>({});
   const [newChallengeOpen, setNewChallengeOpen] = useState(false);
   const [newChallengeTitle, setNewChallengeTitle] = useState("");
   const [newChallengeDescription, setNewChallengeDescription] = useState("");
@@ -29,30 +34,49 @@ const Challenges = () => {
   const [targetScore, setTargetScore] = useState(80);
 
   useEffect(() => {
-    const currentUser = storage.getCurrentUser();
-    if (!currentUser) {
+    if (!authLoading && !user) {
       navigate('/signin');
       return;
     }
+  }, [user, authLoading, navigate]);
 
-    setUser(currentUser);
-    loadChallenges();
+  useEffect(() => {
+    if (user) {
+      loadChallenges();
+      loadQuests();
+      loadUserProgress();
+    }
+  }, [user]);
 
-    // Load quests
-    fetch('/data/sampleQuests.json')
-      .then(res => res.json())
-      .then(data => setQuests(data));
-  }, [navigate]);
+  const loadQuests = async () => {
+    const res = await fetch('/data/sampleQuests.json');
+    const data = await res.json();
+    setQuests(data);
+  };
+
+  const loadUserProgress = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('user_progress')
+      .select('quest_id, completed, score')
+      .eq('user_id', user.id);
+
+    const progressMap: Record<string, { completed: boolean; score: number }> = {};
+    data?.forEach(p => {
+      progressMap[p.quest_id] = { completed: p.completed, score: p.score };
+    });
+    setUserProgress(progressMap);
+  };
 
   const loadChallenges = () => {
     const allChallenges = storage.getChallenges();
-    // Filter out expired challenges
     const active = allChallenges.filter(c => new Date(c.expiresAt) > new Date());
     setChallenges(active);
   };
 
   const handleCreateChallenge = () => {
-    if (!user || !newChallengeTitle.trim() || !selectedQuestId) {
+    if (!user || !profile || !newChallengeTitle.trim() || !selectedQuestId) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -63,14 +87,14 @@ const Challenges = () => {
       description: newChallengeDescription,
       questId: selectedQuestId,
       creatorId: user.id,
-      creatorName: user.username,
+      creatorName: profile.username,
       targetScore,
       participants: [{
         userId: user.id,
-        username: user.username,
-        avatar: user.avatar,
+        username: profile.username,
+        avatar: profile.avatar,
       }],
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: new Date().toISOString(),
     };
 
@@ -85,7 +109,7 @@ const Challenges = () => {
   };
 
   const handleJoinChallenge = (challengeId: string) => {
-    if (!user) return;
+    if (!user || !profile) return;
 
     const challenge = challenges.find(c => c.id === challengeId);
     if (!challenge) return;
@@ -99,8 +123,8 @@ const Challenges = () => {
       ...challenge.participants,
       {
         userId: user.id,
-        username: user.username,
-        avatar: user.avatar,
+        username: profile.username,
+        avatar: profile.avatar,
       }
     ];
 
@@ -113,7 +137,15 @@ const Challenges = () => {
     navigate(`/quest/${questId}`);
   };
 
-  if (!user) return null;
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !profile) return null;
 
   const getTimeRemaining = (expiresAt: string) => {
     const now = new Date().getTime();
@@ -210,8 +242,8 @@ const Challenges = () => {
             {challenges.map((challenge) => {
               const quest = quests.find(q => q.id === challenge.questId);
               const isParticipant = challenge.participants.some(p => p.userId === user.id);
-              const userProgress = storage.getQuestProgress(challenge.questId);
-              const hasCompleted = userProgress?.completed;
+              const questProgress = userProgress[challenge.questId];
+              const hasCompleted = questProgress?.completed;
 
               return (
                 <Card key={challenge.id} className="relative overflow-hidden">
@@ -267,10 +299,10 @@ const Challenges = () => {
                       <span>Ends in {getTimeRemaining(challenge.expiresAt)}</span>
                     </div>
 
-                    {hasCompleted && userProgress && (
+                    {hasCompleted && questProgress && (
                       <div className="bg-success/10 border border-success/20 p-3 rounded-lg">
-                        <p className="text-sm font-medium text-success">Your Score: {userProgress.score}%</p>
-                        {userProgress.score >= challenge.targetScore ? (
+                        <p className="text-sm font-medium text-success">Your Score: {questProgress.score}%</p>
+                        {questProgress.score >= challenge.targetScore ? (
                           <p className="text-xs text-muted-foreground">🎉 Target achieved!</p>
                         ) : (
                           <p className="text-xs text-muted-foreground">Keep trying to beat the target!</p>
@@ -297,7 +329,6 @@ const Challenges = () => {
                       </Button>
                     </div>
 
-                    {/* Participants list */}
                     <div className="border-t pt-3">
                       <p className="text-xs font-medium text-muted-foreground mb-2">PARTICIPANTS</p>
                       <div className="flex flex-wrap gap-2">
