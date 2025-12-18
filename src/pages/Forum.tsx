@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { storage } from "@/lib/storage";
-import { User, ForumPost, ForumReply } from "@/lib/types";
-import { ArrowLeft, MessageSquare, ThumbsUp, Send, Plus } from "lucide-react";
+import { ForumPost, ForumReply } from "@/lib/types";
+import { ArrowLeft, MessageSquare, ThumbsUp, Send, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -20,7 +22,8 @@ import {
 
 const Forum = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [selectedPost, setSelectedPost] = useState<ForumPost | null>(null);
   const [newPostOpen, setNewPostOpen] = useState(false);
@@ -30,15 +33,17 @@ const Forum = () => {
   const [replyContent, setReplyContent] = useState("");
 
   useEffect(() => {
-    const currentUser = storage.getCurrentUser();
-    if (!currentUser) {
+    if (!authLoading && !user) {
       navigate('/signin');
       return;
     }
+  }, [user, authLoading, navigate]);
 
-    setUser(currentUser);
-    loadPosts();
-  }, [navigate]);
+  useEffect(() => {
+    if (user) {
+      loadPosts();
+    }
+  }, [user]);
 
   const loadPosts = () => {
     const allPosts = storage.getForumPosts();
@@ -46,7 +51,7 @@ const Forum = () => {
   };
 
   const handleCreatePost = () => {
-    if (!user || !newPostTitle.trim() || !newPostContent.trim()) {
+    if (!user || !profile || !newPostTitle.trim() || !newPostContent.trim()) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -54,8 +59,8 @@ const Forum = () => {
     const post: ForumPost = {
       id: `post-${Date.now()}`,
       userId: user.id,
-      username: user.username,
-      avatar: user.avatar,
+      username: profile.username,
+      avatar: profile.avatar,
       title: newPostTitle,
       content: newPostContent,
       topic: newPostTopic,
@@ -81,7 +86,7 @@ const Forum = () => {
   };
 
   const handleReply = () => {
-    if (!user || !selectedPost || !replyContent.trim()) {
+    if (!user || !profile || !selectedPost || !replyContent.trim()) {
       toast.error("Please enter a reply");
       return;
     }
@@ -89,8 +94,8 @@ const Forum = () => {
     const reply: ForumReply = {
       id: `reply-${Date.now()}`,
       userId: user.id,
-      username: user.username,
-      avatar: user.avatar,
+      username: profile.username,
+      avatar: profile.avatar,
       content: replyContent,
       likes: 0,
       createdAt: new Date().toISOString(),
@@ -101,13 +106,20 @@ const Forum = () => {
     loadPosts();
     setReplyContent("");
     
-    // Update selected post to reflect new reply
     const updatedPost = { ...selectedPost, replies: updatedReplies };
     setSelectedPost(updatedPost);
     toast.success("Reply posted!");
   };
 
-  if (!user) return null;
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !profile) return null;
 
   const topicColors: Record<string, string> = {
     General: "bg-primary/10 text-primary",
