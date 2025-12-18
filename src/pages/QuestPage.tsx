@@ -3,25 +3,29 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import QuizView from "@/components/QuizView";
 import CodeEditor from "@/components/CodeEditor";
-import { storage } from "@/lib/storage";
-import { Quest, User } from "@/lib/types";
-import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
+import { Quest } from "@/lib/types";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const QuestPage = () => {
   const { questId } = useParams<{ questId: string }>();
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading, updateProfile } = useProfile();
   const [quest, setQuest] = useState<Quest | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [questLoading, setQuestLoading] = useState(true);
 
   useEffect(() => {
-    const currentUser = storage.getCurrentUser();
-    if (!currentUser) {
+    if (!authLoading && !user) {
       navigate('/signin');
       return;
     }
-    setUser(currentUser);
+  }, [user, authLoading, navigate]);
 
+  useEffect(() => {
     // Load quest data
     fetch('/data/sampleQuests.json')
       .then(res => res.json())
@@ -33,44 +37,70 @@ const QuestPage = () => {
           toast.error("Quest not found");
           navigate('/dashboard');
         }
+        setQuestLoading(false);
+      })
+      .catch(() => {
+        toast.error("Failed to load quest");
+        setQuestLoading(false);
       });
   }, [questId, navigate]);
 
-  const handleQuestComplete = (score: number) => {
-    if (!quest || !user) return;
+  const handleQuestComplete = async (score: number) => {
+    if (!quest || !user || !profile) return;
 
     // Calculate XP earned based on score
     const totalQuestions = quest.questions?.length || 1;
     const scorePercentage = score / totalQuestions;
     const xpEarned = Math.round(quest.xpReward * scorePercentage);
 
-    // Update user
-    const updatedUser = {
-      ...user,
-      xp: user.xp + xpEarned,
-      totalXP: user.totalXP + xpEarned,
-      completedQuests: user.completedQuests + 1,
-      level: Math.floor((user.totalXP + xpEarned) / 200) + 1,
-    };
+    // Calculate new values
+    const newTotalXP = profile.total_xp + xpEarned;
+    const newXP = profile.xp + xpEarned;
+    const xpPerLevel = 1000;
+    let newLevel = profile.level;
+    let remainingXP = newXP;
 
-    // Award badges
-    if (updatedUser.completedQuests === 1 && !updatedUser.badges.includes("First Quest")) {
-      updatedUser.badges.push("First Quest");
-    }
-    if (scorePercentage === 1 && !updatedUser.badges.includes("Perfect Score")) {
-      updatedUser.badges.push("Perfect Score");
+    while (remainingXP >= xpPerLevel) {
+      newLevel++;
+      remainingXP -= xpPerLevel;
     }
 
-    storage.setCurrentUser(updatedUser);
+    // Check for badges
+    const badges = [...(profile.badges || [])];
+    if (profile.completed_quests === 0 && !badges.includes("First Quest")) {
+      badges.push("First Quest");
+    }
+    if (scorePercentage === 1 && !badges.includes("Perfect Score")) {
+      badges.push("Perfect Score");
+    }
 
-    // Save progress
-    storage.saveQuestProgress({
-      questId: quest.id,
-      completed: true,
-      score,
-      xpEarned,
-      completedAt: new Date().toISOString(),
+    // Update profile in database
+    await updateProfile({
+      xp: remainingXP,
+      total_xp: newTotalXP,
+      level: newLevel,
+      completed_quests: profile.completed_quests + 1,
+      badges,
     });
+
+    // Save quest progress to database
+    const { error: progressError } = await supabase
+      .from('user_progress')
+      .upsert({
+        user_id: user.id,
+        quest_id: quest.id,
+        completed: true,
+        score: Math.round(scorePercentage * 100),
+        xp_earned: xpEarned,
+        attempts: 1,
+        completed_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id,quest_id'
+      });
+
+    if (progressError) {
+      console.error('Error saving progress:', progressError);
+    }
 
     toast.success(`Quest completed! +${xpEarned} XP`, {
       description: scorePercentage === 1 ? "Perfect score! 🎉" : "Great job!",
@@ -79,7 +109,15 @@ const QuestPage = () => {
     setTimeout(() => navigate('/dashboard'), 2000);
   };
 
-  if (!quest || !user) {
+  if (authLoading || profileLoading || questLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!quest || !user || !profile) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Loading quest...</p>
