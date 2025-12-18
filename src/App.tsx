@@ -15,6 +15,7 @@ import Forum from "./pages/Forum";
 import Challenges from "./pages/Challenges";
 import AIMentor from "./pages/AIMentor";
 import Profile from "./pages/Profile";
+import Courses from "./pages/Courses";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/challenges" element={<Challenges />} />
             <Route path="/ai-mentor" element={<AIMentor />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/courses" element={<Courses />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

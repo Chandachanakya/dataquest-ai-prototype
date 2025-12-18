@@ -9,7 +9,7 @@ import UserAvatar from "@/components/UserAvatar";
 import { storage } from "@/lib/storage";
 import { aiEngine } from "@/lib/ai";
 import { User, Quest } from "@/lib/types";
-import { Flame, Trophy, Target, LogOut, Award, BarChart3, MessageSquare, Swords, Sparkles, UserCog } from "lucide-react";
+import { Flame, Trophy, Target, LogOut, Award, BarChart3, MessageSquare, Swords, Sparkles, UserCog, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -70,6 +70,10 @@ const Dashboard = () => {
           </h1>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <Button variant="outline" size="sm" onClick={() => navigate('/courses')}>
+              <GraduationCap className="h-4 w-4 mr-2" aria-hidden="true" />
+              Courses
+            </Button>
             <Button variant="outline" size="sm" onClick={() => navigate('/ai-mentor')}>
               <Sparkles className="h-4 w-4 mr-2" aria-hidden="true" />
               AI Mentor
