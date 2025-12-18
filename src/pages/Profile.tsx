@@ -5,9 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { storage } from "@/lib/storage";
-import { User } from "@/lib/types";
-import { ArrowLeft, Save } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import UserAvatar from "@/components/UserAvatar";
 
@@ -15,12 +15,14 @@ const AVATAR_OPTIONS = ["🧙‍♂️", "🥷", "🧠", "💻", "🐍", "🚀",
 
 const Profile = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading, updateProfile } = useProfile();
   const [username, setUsername] = useState("");
   const [avatar, setAvatar] = useState("");
   const [learningStyle, setLearningStyle] = useState<"visual" | "hands-on" | "reading">("visual");
   const [difficulty, setDifficulty] = useState<"beginner" | "intermediate" | "advanced">("beginner");
   const [topics, setTopics] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const availableTopics = [
     "python", "javascript", "react", "sql", "machine-learning", 
@@ -28,18 +30,20 @@ const Profile = () => {
   ];
 
   useEffect(() => {
-    const currentUser = storage.getCurrentUser();
-    if (!currentUser) {
+    if (!authLoading && !user) {
       navigate('/signin');
-      return;
     }
-    setUser(currentUser);
-    setUsername(currentUser.username);
-    setAvatar(currentUser.avatar);
-    setLearningStyle(currentUser.preferences.learningStyle);
-    setDifficulty(currentUser.preferences.difficulty);
-    setTopics(currentUser.preferences.topics);
-  }, [navigate]);
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (profile) {
+      setUsername(profile.username);
+      setAvatar(profile.avatar);
+      setLearningStyle(profile.learning_style);
+      setDifficulty(profile.difficulty);
+      setTopics(profile.topics || []);
+    }
+  }, [profile]);
 
   const handleTopicToggle = (topic: string) => {
     setTopics(prev => 
@@ -49,31 +53,43 @@ const Profile = () => {
     );
   };
 
-  const handleSave = () => {
-    if (!user) return;
+  const handleSave = async () => {
+    if (!profile) return;
     
     if (!username.trim()) {
       toast.error("Username cannot be empty");
       return;
     }
 
-    const updatedUser: User = {
-      ...user,
+    setIsSaving(true);
+
+    const { error } = await updateProfile({
       username: username.trim(),
       avatar,
-      preferences: {
-        learningStyle,
-        difficulty,
-        topics
-      }
-    };
+      learning_style: learningStyle,
+      difficulty,
+      topics
+    });
 
-    storage.setCurrentUser(updatedUser);
-    setUser(updatedUser);
+    setIsSaving(false);
+
+    if (error) {
+      toast.error("Failed to update profile");
+      return;
+    }
+
     toast.success("Profile updated successfully!");
   };
 
-  if (!user) return null;
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !profile) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,24 +202,33 @@ const Profile = () => {
               <Label className="text-muted-foreground">Your Stats</Label>
               <div className="grid grid-cols-3 gap-4 mt-3">
                 <div className="text-center p-3 bg-secondary/30 rounded-lg">
-                  <div className="text-2xl font-bold text-primary">{user.level}</div>
+                  <div className="text-2xl font-bold text-primary">{profile.level}</div>
                   <div className="text-xs text-muted-foreground">Level</div>
                 </div>
                 <div className="text-center p-3 bg-secondary/30 rounded-lg">
-                  <div className="text-2xl font-bold text-accent">{user.totalXP.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-accent">{profile.total_xp.toLocaleString()}</div>
                   <div className="text-xs text-muted-foreground">Total XP</div>
                 </div>
                 <div className="text-center p-3 bg-secondary/30 rounded-lg">
-                  <div className="text-2xl font-bold text-success">{user.badges.length}</div>
+                  <div className="text-2xl font-bold text-success">{(profile.badges || []).length}</div>
                   <div className="text-xs text-muted-foreground">Badges</div>
                 </div>
               </div>
             </div>
 
             {/* Save Button */}
-            <Button onClick={handleSave} className="w-full" size="lg">
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
+            <Button onClick={handleSave} className="w-full" size="lg" disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>
