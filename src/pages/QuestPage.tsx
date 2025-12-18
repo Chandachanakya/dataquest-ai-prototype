@@ -74,12 +74,24 @@ const QuestPage = () => {
       badges.push("Perfect Score");
     }
 
+    // Update streak (increment by 1 on quest completion)
+    const newStreak = profile.streak + 1;
+    
+    // Check for streak badges
+    if (newStreak >= 7 && !badges.includes("Week Warrior")) {
+      badges.push("Week Warrior");
+    }
+    if (newStreak >= 30 && !badges.includes("Monthly Master")) {
+      badges.push("Monthly Master");
+    }
+
     // Update profile in database
     await updateProfile({
       xp: remainingXP,
       total_xp: newTotalXP,
       level: newLevel,
       completed_quests: profile.completed_quests + 1,
+      streak: newStreak,
       badges,
     });
 
