@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Quest } from "@/lib/types";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { CongratulationsModal } from "@/components/CongratulationsModal";
 
 const QuestPage = () => {
   const { questId } = useParams<{ questId: string }>();
@@ -17,6 +18,9 @@ const QuestPage = () => {
   const { profile, loading: profileLoading, updateProfile } = useProfile();
   const [quest, setQuest] = useState<Quest | null>(null);
   const [questLoading, setQuestLoading] = useState(true);
+  const [showCongratulations, setShowCongratulations] = useState(false);
+  const [xpEarned, setXpEarned] = useState(0);
+  const [isPerfectScore, setIsPerfectScore] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -51,15 +55,22 @@ const QuestPage = () => {
     // Calculate XP earned based on score
     const totalQuestions = quest.questions?.length || 1;
     const scorePercentage = score / totalQuestions;
-    const xpEarned = Math.round(quest.xpReward * scorePercentage);
+    const xpEarnedValue = Math.round(quest.xpReward * scorePercentage);
+    const perfectScore = scorePercentage === 1;
+    
+    // Store values for congratulations modal
+    setXpEarned(xpEarnedValue);
+    setIsPerfectScore(perfectScore);
 
     // Calculate new values
-    const newTotalXP = profile.total_xp + xpEarned;
-    const newXP = profile.xp + xpEarned;
+    const newTotalXP = profile.total_xp + xpEarnedValue;
+    const newXP = profile.xp + xpEarnedValue;
     const xpPerLevel = 1000;
     let newLevel = profile.level;
     let remainingXP = newXP;
 
+    // Level up logic: Only increase level when XP reaches or exceeds the threshold (1000 XP per level)
+    // Handle multiple level-ups if user earns a lot of XP
     while (remainingXP >= xpPerLevel) {
       newLevel++;
       remainingXP -= xpPerLevel;
@@ -74,8 +85,31 @@ const QuestPage = () => {
       badges.push("Perfect Score");
     }
 
-    // Update streak (increment by 1 on quest completion)
-    const newStreak = profile.streak + 1;
+    // Update streak logic: Only increment once per day
+    const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
+    const lastQuestDate = profile.last_quest_date as string | null;
+    
+    let newStreak = profile.streak;
+    
+    // If last quest was today, don't increment streak (already incremented today)
+    if (lastQuestDate === today) {
+      newStreak = profile.streak; // Keep current streak
+    } 
+    // If last quest was yesterday, increment streak (continuing streak)
+    else if (lastQuestDate) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      if (lastQuestDate === yesterdayStr) {
+        newStreak = profile.streak + 1; // Continue streak
+      } else {
+        newStreak = 1; // Reset streak (gap of more than 1 day)
+      }
+    } else {
+      // No previous quest date, start streak at 1
+      newStreak = 1;
+    }
     
     // Check for streak badges
     if (newStreak >= 7 && !badges.includes("Week Warrior")) {
@@ -93,6 +127,7 @@ const QuestPage = () => {
       completed_quests: profile.completed_quests + 1,
       streak: newStreak,
       badges,
+      last_quest_date: today,
     });
 
     // Save quest progress to database
@@ -103,7 +138,7 @@ const QuestPage = () => {
         quest_id: quest.id,
         completed: true,
         score: Math.round(scorePercentage * 100),
-        xp_earned: xpEarned,
+        xp_earned: xpEarnedValue,
         attempts: 1,
         completed_at: new Date().toISOString(),
       }, {
@@ -114,11 +149,8 @@ const QuestPage = () => {
       console.error('Error saving progress:', progressError);
     }
 
-    toast.success(`Quest completed! +${xpEarned} XP`, {
-      description: scorePercentage === 1 ? "Perfect score! 🎉" : "Great job!",
-    });
-
-    setTimeout(() => navigate('/dashboard'), 2000);
+    // Show congratulations modal
+    setShowCongratulations(true);
   };
 
   if (authLoading || profileLoading || questLoading) {
@@ -149,13 +181,13 @@ const QuestPage = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
           {/* Quest Header */}
-          <div className="text-center space-y-2">
-            <h1 className="text-4xl font-bold">{quest.title}</h1>
-            <p className="text-lg text-muted-foreground">{quest.description}</p>
-            <div className="flex items-center justify-center gap-3">
+          <div className="text-center space-y-2 px-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">{quest.title}</h1>
+            <p className="text-base sm:text-lg text-muted-foreground">{quest.description}</p>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
               <span className="text-sm font-medium bg-primary/10 text-primary px-3 py-1 rounded-full">
                 {quest.difficulty}
               </span>
@@ -195,6 +227,18 @@ const QuestPage = () => {
           )}
         </div>
       </main>
+
+      {/* Congratulations Modal */}
+      <CongratulationsModal
+        open={showCongratulations}
+        onClose={() => {
+          setShowCongratulations(false);
+          navigate('/dashboard');
+        }}
+        xpEarned={xpEarned}
+        isPerfectScore={isPerfectScore}
+        questTitle={quest.title}
+      />
     </div>
   );
 };

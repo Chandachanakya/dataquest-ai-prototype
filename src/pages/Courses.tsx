@@ -111,29 +111,50 @@ const Courses = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 space-y-8">
+      <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-6 sm:space-y-8">
         {/* Page Header */}
-        <div className="text-center space-y-4 max-w-2xl mx-auto">
-          <h2 className="text-4xl font-bold text-foreground">
+        <div className="text-center space-y-3 sm:space-y-4 max-w-2xl mx-auto animate-fade-in-up px-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
             Data Science Learning Path
           </h2>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base sm:text-lg">
             Master data science from fundamentals to advanced techniques with our interactive modules.
           </p>
         </div>
 
+        {/* Stats Section */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 animate-fade-in-up delay-100">
+          <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
+            <p className="text-2xl sm:text-3xl font-bold text-primary">51</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Total Modules</p>
+          </Card>
+          <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
+            <p className="text-2xl sm:text-3xl font-bold text-success">16</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Completed</p>
+          </Card>
+          <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
+            <p className="text-2xl sm:text-3xl font-bold text-accent">36h</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Total Duration</p>
+          </Card>
+          <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
+            <p className="text-2xl sm:text-3xl font-bold text-foreground">31%</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Overall Progress</p>
+          </Card>
+        </div>
+
         {/* Course Grid */}
         <div className="grid md:grid-cols-2 gap-6">
-          {courses.map((course) => {
+          {courses.map((course, index) => {
             const progress = getProgressPercentage(course.completedModules, course.modules);
             const isHovered = hoveredCourse === course.id;
             
             return (
               <Card 
                 key={course.id}
-                className={`relative overflow-hidden transition-all duration-300 cursor-pointer border-2 ${
+                className={`relative overflow-hidden transition-all duration-300 cursor-pointer border-2 animate-fade-in-up ${
                   isHovered ? 'border-primary shadow-lg scale-[1.02]' : 'border-border hover:border-primary/50'
                 }`}
+                style={{ animationDelay: `${200 + index * 100}ms` }}
                 onMouseEnter={() => setHoveredCourse(course.id)}
                 onMouseLeave={() => setHoveredCourse(null)}
               >
@@ -214,26 +235,6 @@ const Courses = () => {
               </Card>
             );
           })}
-        </div>
-
-        {/* Stats Section */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8">
-          <Card className="text-center p-4">
-            <p className="text-3xl font-bold text-primary">51</p>
-            <p className="text-sm text-muted-foreground">Total Modules</p>
-          </Card>
-          <Card className="text-center p-4">
-            <p className="text-3xl font-bold text-success">16</p>
-            <p className="text-sm text-muted-foreground">Completed</p>
-          </Card>
-          <Card className="text-center p-4">
-            <p className="text-3xl font-bold text-accent">36h</p>
-            <p className="text-sm text-muted-foreground">Total Duration</p>
-          </Card>
-          <Card className="text-center p-4">
-            <p className="text-3xl font-bold text-foreground">31%</p>
-            <p className="text-sm text-muted-foreground">Overall Progress</p>
-          </Card>
         </div>
       </main>
     </div>

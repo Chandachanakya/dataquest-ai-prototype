@@ -108,6 +108,46 @@ export default {
           "0%": { transform: "translate(0, 0)" },
           "100%": { transform: "translate(60px, 60px)" },
         },
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in-up": {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in-down": {
+          "0%": { opacity: "0", transform: "translateY(-20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "slide-in-right": {
+          "0%": { opacity: "0", transform: "translateX(-20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "slide-in-left": {
+          "0%": { opacity: "0", transform: "translateX(20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "-1000px 0" },
+          "100%": { backgroundPosition: "1000px 0" },
+        },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 20px hsl(var(--primary) / 0.4)" },
+          "50%": { boxShadow: "0 0 40px hsl(var(--primary) / 0.6)" },
+        },
+        "bounce-subtle": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
+        "spin-slow": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -118,6 +158,16 @@ export default {
         "pulse-slow": "pulse-slow 4s ease-in-out infinite",
         "particle": "particle 3s ease-out infinite",
         "scanline": "scanline 8s linear infinite",
+        "fade-in": "fade-in 0.6s ease-out",
+        "fade-in-up": "fade-in-up 0.6s ease-out",
+        "fade-in-down": "fade-in-down 0.6s ease-out",
+        "scale-in": "scale-in 0.4s ease-out",
+        "slide-in-right": "slide-in-right 0.5s ease-out",
+        "slide-in-left": "slide-in-left 0.5s ease-out",
+        "shimmer": "shimmer 2s linear infinite",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        "bounce-subtle": "bounce-subtle 2s ease-in-out infinite",
+        "spin-slow": "spin-slow 3s linear infinite",
       },
     },
   },

@@ -26,29 +26,45 @@ const QuestCard = ({ quest, isCompleted = false, onStart }: QuestCardProps) => {
   const TypeIcon = typeIcons[quest.type];
 
   return (
-    <Card className="hover:shadow-md transition-all duration-300 hover:border-primary/50">
+    <Card className="group hover-lift hover:border-primary/50 animate-fade-in-up transition-all duration-300 overflow-hidden relative">
+      {/* Subtle glow effect on hover */}
+      <div className="absolute inset-0 bg-gradient-hero opacity-0 group-hover:opacity-5 transition-opacity duration-300 pointer-events-none" />
+      
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <TypeIcon className="h-5 w-5 text-primary" aria-hidden="true" />
-              {quest.title}
-              {isCompleted && <Star className="h-4 w-4 fill-accent text-accent" aria-label="Completed" />}
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg group-hover:text-primary transition-colors duration-300">
+              <TypeIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary group-hover:scale-110 transition-transform duration-300 shrink-0" aria-hidden="true" />
+              <span className="break-words">{quest.title}</span>
+              {isCompleted && (
+                <Star 
+                  className="h-4 w-4 fill-accent text-accent animate-bounce-subtle shrink-0" 
+                  aria-label="Completed"
+                />
+              )}
             </CardTitle>
-            <CardDescription className="mt-2">{quest.description}</CardDescription>
+            <CardDescription className="mt-2 text-sm">{quest.description}</CardDescription>
           </div>
         </div>
         <div className="flex gap-2 mt-3">
-          <Badge variant="outline" className={difficultyColors[quest.difficulty]}>
+          <Badge 
+            variant="outline" 
+            className={`${difficultyColors[quest.difficulty]} transition-all duration-300 group-hover:scale-105`}
+          >
             {quest.difficulty}
           </Badge>
-          <Badge variant="secondary">{quest.topic}</Badge>
+          <Badge 
+            variant="secondary" 
+            className="transition-all duration-300 group-hover:scale-105"
+          >
+            {quest.topic}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <div className="bg-gradient-xp text-white px-3 py-1 rounded-full text-sm font-semibold">
+            <div className="bg-gradient-xp text-white px-3 py-1 rounded-full text-xs sm:text-sm font-semibold group-hover:scale-110 transition-transform duration-300 shadow-sm">
               +{quest.xpReward} XP
             </div>
           </div>
@@ -56,6 +72,7 @@ const QuestCard = ({ quest, isCompleted = false, onStart }: QuestCardProps) => {
             onClick={() => onStart(quest.id)}
             variant={isCompleted ? "outline" : "default"}
             size="sm"
+            className="w-full sm:w-auto group-hover:scale-105 transition-all duration-300 group-hover:shadow-md"
             aria-label={isCompleted ? `Retry ${quest.title}` : `Start ${quest.title}`}
           >
             {isCompleted ? "Retry" : "Start Quest"}

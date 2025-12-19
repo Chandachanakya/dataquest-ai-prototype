@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Send, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, Loader2, Bot, User as UserIcon, MessageSquare } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import UserAvatar from "@/components/UserAvatar";
 
 interface Message {
   id: string;
@@ -164,75 +166,143 @@ const AIMentor = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card className="h-[calc(100vh-200px)] flex flex-col shadow-glow border-primary/20">
-          <CardHeader>
-            <CardTitle>Your Personal AI Learning Assistant</CardTitle>
-            <CardDescription>
-              Get personalized guidance, recommendations, and support for your data science journey
-            </CardDescription>
+      <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-5xl">
+        <Card className="h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] flex flex-col shadow-2xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 animate-fade-in-up">
+          <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/10 via-transparent to-accent/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/30 rounded-full blur-xl animate-pulse-slow" />
+                  <div className="relative bg-gradient-hero p-3 rounded-full">
+                    <Bot className="h-6 w-6 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <CardTitle className="text-xl sm:text-2xl">Your Personal AI Learning Assistant</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Get personalized guidance, recommendations, and support
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className="hidden sm:flex items-center gap-1 border-primary/30">
+                <Sparkles className="h-3 w-3 text-primary" />
+                AI Powered
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col p-0">
-            <ScrollArea ref={scrollRef} className="flex-1 p-6">
-              <div className="space-y-4">
-                {messages.map((message) => (
+            <ScrollArea ref={scrollRef} className="flex-1 p-4 sm:p-6 bg-gradient-to-b from-background via-background to-muted/20">
+              <div className="space-y-4 sm:space-y-6">
+                {messages.map((message, index) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex gap-3 sm:gap-4 ${message.role === "user" ? "justify-end" : "justify-start"} animate-fade-in-up`}
+                    style={{ animationDelay: `${index * 50}ms` }}
                   >
-                    <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground shadow-md"
-                          : "bg-muted text-foreground border border-border"
-                      }`}
-                    >
+                    {message.role === "assistant" && (
+                      <div className="shrink-0">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-primary/20 rounded-full blur-md" />
+                          <div className="relative bg-gradient-hero p-2 rounded-full">
+                            <Bot className="h-5 w-5 text-white" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-1 max-w-[85%] sm:max-w-[75%]">
                       {message.role === "assistant" && (
-                        <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                          <Sparkles className="h-3 w-3" aria-hidden="true" />
-                          <span className="font-medium">AI Mentor</span>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold text-primary">AI Mentor</span>
+                          <Badge variant="outline" className="text-xs py-0 h-4 border-primary/30">
+                            Assistant
+                          </Badge>
                         </div>
                       )}
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                        {message.content}
+                      {message.role === "user" && profile && (
+                        <div className="flex items-center gap-2 justify-end mb-1">
+                          <Badge variant="default" className="text-xs py-0 h-4">
+                            You
+                          </Badge>
+                          <span className="text-xs font-semibold text-muted-foreground">{profile.username}</span>
+                        </div>
+                      )}
+                      <div
+                        className={`rounded-2xl px-4 py-3 shadow-md transition-all duration-300 ${
+                          message.role === "user"
+                            ? "bg-gradient-hero text-white hover:shadow-lg"
+                            : "bg-card text-foreground border-2 border-primary/20 hover:border-primary/30"
+                        }`}
+                      >
+                        <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed">
+                          {message.content}
+                        </div>
                       </div>
+                      <span className="text-xs text-muted-foreground px-2">
+                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
+                    {message.role === "user" && profile && (
+                      <div className="shrink-0">
+                        <UserAvatar 
+                          avatar={profile.avatar} 
+                          username={profile.username}
+                          size="sm"
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
                 {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-muted border border-border">
+                  <div className="flex justify-start gap-3 sm:gap-4 animate-fade-in-up">
+                    <div className="shrink-0">
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-primary/20 rounded-full blur-md" />
+                        <div className="relative bg-gradient-hero p-2 rounded-full">
+                          <Bot className="h-5 w-5 text-white" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="max-w-[75%] rounded-2xl px-4 py-3 bg-card border-2 border-primary/20">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                        <span>AI is thinking...</span>
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
+                        <span className="font-medium">AI is thinking...</span>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
             </ScrollArea>
-            <div className="p-4 border-t border-border">
-              <div className="flex gap-2">
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ask me anything about your learning journey..."
-                  className="flex-1"
-                  disabled={isLoading}
-                />
+            <div className="p-4 sm:p-6 border-t border-border bg-card/50 backdrop-blur-sm">
+              <div className="flex gap-2 sm:gap-3">
+                <div className="relative flex-1">
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ask me anything about your learning journey..."
+                    className="pr-10 h-11 sm:h-12 text-sm sm:text-base"
+                    disabled={isLoading}
+                  />
+                  <MessageSquare className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                </div>
                 <Button
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
-                  size="icon"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  size="lg"
+                  className="bg-gradient-hero text-white hover:shadow-lg hover:scale-105 transition-all duration-300 px-4 sm:px-6"
                 >
-                  <Send className="h-4 w-4" aria-hidden="true" />
+                  <Send className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+                  <span className="hidden sm:inline ml-2">Send</span>
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Press Enter to send • Shift+Enter for new line
-              </p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-muted-foreground">
+                  Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Enter</kbd> to send
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Shift</kbd> + <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Enter</kbd> for new line
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

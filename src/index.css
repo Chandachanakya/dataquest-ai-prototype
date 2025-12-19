@@ -96,7 +96,94 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-size: 16px; /* Prevent zoom on iOS when focusing inputs */
+  }
+  
+  /* Better scrolling on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Improve touch targets for mobile - apply to interactive elements where needed */
+  @media (max-width: 640px) {
+    button:not(.no-min-touch),
+    a:not(.no-min-touch) {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+}
+
+@layer utilities {
+  /* Smooth transitions for interactive elements */
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+
+  /* Animation delay utilities for stagger effects */
+  .delay-75 {
+    animation-delay: 75ms;
+  }
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+  .delay-150 {
+    animation-delay: 150ms;
+  }
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+  .delay-300 {
+    animation-delay: 300ms;
+  }
+  .delay-500 {
+    animation-delay: 500ms;
+  }
+
+  /* Stagger animation classes */
+  .stagger-1 {
+    animation-delay: 0ms;
+  }
+  .stagger-2 {
+    animation-delay: 100ms;
+  }
+  .stagger-3 {
+    animation-delay: 200ms;
+  }
+  .stagger-4 {
+    animation-delay: 300ms;
+  }
+  .stagger-5 {
+    animation-delay: 400ms;
+  }
+  .stagger-6 {
+    animation-delay: 500ms;
+  }
+
+  /* Hover lift effect */
+  .hover-lift {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  }
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Shimmer effect for loading states */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s linear infinite;
   }
 }
