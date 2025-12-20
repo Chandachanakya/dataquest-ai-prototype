@@ -157,6 +157,7 @@ const Courses = () => {
                 style={{ animationDelay: `${200 + index * 100}ms` }}
                 onMouseEnter={() => setHoveredCourse(course.id)}
                 onMouseLeave={() => setHoveredCourse(null)}
+                onClick={() => course.id === 'python' && navigate('/courses/python')}
               >
                 {/* Gradient accent bar */}
                 <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${course.color}`} />
@@ -227,6 +228,10 @@ const Courses = () => {
                   <Button 
                     className="w-full mt-2 group"
                     variant={progress > 0 ? "default" : "outline"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (course.id === 'python') navigate('/courses/python');
+                    }}
                   >
                     <Play className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
                     {progress === 0 ? 'Start Course' : progress === 100 ? 'Review Course' : 'Continue Learning'}
