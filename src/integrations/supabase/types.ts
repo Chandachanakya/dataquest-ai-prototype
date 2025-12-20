@@ -98,6 +98,7 @@ export type Database = {
           created_at: string | null
           difficulty: string | null
           id: string
+          last_quest_date: string | null
           learning_style: string | null
           level: number | null
           streak: number | null
@@ -114,6 +115,7 @@ export type Database = {
           created_at?: string | null
           difficulty?: string | null
           id: string
+          last_quest_date?: string | null
           learning_style?: string | null
           level?: number | null
           streak?: number | null
@@ -130,6 +132,7 @@ export type Database = {
           created_at?: string | null
           difficulty?: string | null
           id?: string
+          last_quest_date?: string | null
           learning_style?: string | null
           level?: number | null
           streak?: number | null
