@@ -20,8 +20,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-type ChallengeParticipant = Tables<'challenge_participants'> & { profiles: { username: string, avatar: string } };
+type ChallengeParticipant = Tables<'challenge_participants'>;
 type Challenge = Tables<'challenges'> & { challenge_participants: ChallengeParticipant[] };
 
 const Challenges = () => {
@@ -106,16 +113,15 @@ const Challenges = () => {
       .from('challenges')
       .select(`
         *,
-        challenge_participants (*, profiles(username, avatar))
+        challenge_participants (*)
       `)
-      .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false });
 
     if (error) {
       toast.error("Failed to load challenges.");
       console.error(error);
     } else {
-      setChallenges(data as any);
+      setChallenges(data || []);
     }
   };
 
@@ -226,7 +232,6 @@ const Challenges = () => {
   };
 
   useEffect(() => {
-    // When user's quest progress changes, update their score in any relevant challenges
     if (user && Object.keys(userProgress).length > 0) {
       for (const [questId, progress] of Object.entries(userProgress)) {
         if (progress.completed) {
@@ -234,7 +239,7 @@ const Challenges = () => {
         }
       }
     }
-  }, [userProgress]); // Reruns when userProgress is updated
+  }, [userProgress]);
 
   const handleStartQuest = (questId: string) => {
     navigate(`/quest/${questId}`);
@@ -307,18 +312,18 @@ const Challenges = () => {
                     onChange={(e) => setNewChallengeDescription(e.target.value)}
                   />
                   <div>
-                    <select
-                      className="w-full p-2 rounded-md border border-input bg-background"
-                      value={selectedQuestId}
-                      onChange={(e) => setSelectedQuestId(e.target.value)}
-                    >
-                      <option value="">Select a quest</option>
-                      {quests.map(quest => (
-                        <option key={quest.id} value={quest.id}>
-                          {quest.title} ({quest.difficulty})
-                        </option>
-                      ))}
-                    </select>
+                    <Select value={selectedQuestId} onValueChange={setSelectedQuestId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a quest" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {quests.map(quest => (
+                          <SelectItem key={quest.id} value={quest.id}>
+                            {quest.title} ({quest.difficulty})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {newChallengeOpen && !selectedQuestId && (
                         <p className="text-red-500 text-xs mt-1">Please select a quest.</p>
                     )}
@@ -435,10 +440,10 @@ const Challenges = () => {
                           <div
                             key={participant.user_id}
                             className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded-full"
-                            title={participant.profiles.username}
+                            title={participant.username}
                           >
-                            <span className="text-sm">{participant.profiles.avatar}</span>
-                            <span className="text-xs font-medium">{participant.profiles.username}</span>
+                            <span className="text-sm">{participant.avatar}</span>
+                            <span className="text-xs font-medium">{participant.username}</span>
                           </div>
                         ))}
                         {challenge.challenge_participants.length > 5 && (

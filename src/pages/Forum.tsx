@@ -21,8 +21,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-type ForumPost = Tables<'forum_posts'> & { replies: Tables<'forum_replies'>[], profiles: { username: string, avatar: string } };
-type ForumReply = Tables<'forum_replies'> & { profiles: { username: string, avatar: string } };
+type ForumPost = Tables<'forum_posts'> & { replies: Tables<'forum_replies'>[] };
+type ForumReply = Tables<'forum_replies'>;
 
 const Forum = () => {
   const navigate = useNavigate();
@@ -69,8 +69,7 @@ const Forum = () => {
       .from('forum_posts')
       .select(`
         *,
-        profiles (username, avatar),
-        forum_replies (*, profiles(username, avatar))
+        replies:forum_replies(*)
       `)
       .order('created_at', { ascending: false });
 
@@ -88,8 +87,7 @@ const Forum = () => {
       .from('forum_posts')
       .select(`
         *,
-        profiles (username, avatar),
-        forum_replies (*, profiles(username, avatar))
+        replies:forum_replies(*)
       `)
       .eq('id', postId)
       .order('created_at', { referencedTable: 'forum_replies', ascending: true })
@@ -120,11 +118,11 @@ const Forum = () => {
     try {
       const { error } = await supabase.from('forum_posts').insert({
         user_id: user.id,
+        username: profile.username,
+        avatar: profile.avatar,
         title: newPostTitle,
         content: newPostContent,
         topic: newPostTopic,
-        username: profile.username,
-        avatar: profile.avatar,
       });
 
       if (error) throw error;
@@ -168,9 +166,9 @@ const Forum = () => {
     const { error } = await supabase.from('forum_replies').insert({
       post_id: selectedPost.id,
       user_id: user.id,
-      content: replyContent,
       username: profile.username,
       avatar: profile.avatar,
+      content: replyContent,
     });
 
     if (error) {
@@ -307,13 +305,13 @@ const Forum = () => {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2 flex-1">
-                        <span className="text-2xl">{post.profiles.avatar}</span>
+                        <span className="text-2xl">{post.avatar}</span>
                         <div className="flex-1 min-w-0">
                           <CardTitle className="text-base truncate">
                             {post.title}
                           </CardTitle>
                           <p className="text-sm text-muted-foreground">
-                            by {post.profiles.username}
+                            by {post.username}
                           </p>
                         </div>
                       </div>
@@ -355,10 +353,10 @@ const Forum = () => {
                 <Card>
                   <CardHeader>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">{selectedPost.profiles.avatar}</span>
+                      <span className="text-2xl">{selectedPost.avatar}</span>
                       <div>
                         <CardTitle className="text-lg">
-                          {selectedPost.profiles.username}
+                          {selectedPost.username}
                         </CardTitle>
                         <p className="text-xs text-muted-foreground">
                           {new Date(
@@ -394,10 +392,10 @@ const Forum = () => {
                             className="bg-muted/50 p-3 rounded-lg"
                           >
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-lg">{reply.profiles.avatar}</span>
+                              <span className="text-lg">{reply.avatar}</span>
                               <div className="flex-1">
                                 <p className="text-sm font-medium">
-                                  {reply.profiles.username}
+                                  {reply.username}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {new Date(

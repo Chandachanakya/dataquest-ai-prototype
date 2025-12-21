@@ -52,6 +52,77 @@ export type Database = {
           },
         ]
       }
+      challenge_participants: {
+        Row: {
+          avatar: string | null
+          challenge_id: string
+          completed_at: string | null
+          score: number | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar?: string | null
+          challenge_id: string
+          completed_at?: string | null
+          score?: number | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          avatar?: string | null
+          challenge_id?: string
+          completed_at?: string | null
+          score?: number | null
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_participants_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenges: {
+        Row: {
+          created_at: string | null
+          creator_id: string
+          creator_name: string
+          description: string | null
+          expires_at: string
+          id: string
+          quest_id: string
+          target_score: number
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id: string
+          creator_name: string
+          description?: string | null
+          expires_at: string
+          id?: string
+          quest_id: string
+          target_score: number
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string
+          creator_name?: string
+          description?: string | null
+          expires_at?: string
+          id?: string
+          quest_id?: string
+          target_score?: number
+          title?: string
+        }
+        Relationships: []
+      }
       course_progress: {
         Row: {
           completed_modules: number | null
@@ -86,6 +157,83 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_posts: {
+        Row: {
+          avatar: string | null
+          content: string
+          created_at: string | null
+          id: string
+          likes: number | null
+          title: string
+          topic: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          likes?: number | null
+          title: string
+          topic: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          avatar?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          likes?: number | null
+          title?: string
+          topic?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      forum_replies: {
+        Row: {
+          avatar: string | null
+          content: string
+          created_at: string | null
+          id: string
+          likes: number | null
+          post_id: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          likes?: number | null
+          post_id: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          avatar?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          likes?: number | null
+          post_id?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_replies_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
             referencedColumns: ["id"]
           },
         ]
@@ -189,184 +337,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      forum_posts: {
-        Row: {
-          id: string
-          user_id: string
-          username: string
-          avatar: string | null
-          title: string
-          content: string
-          topic: string
-          likes: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          username: string
-          avatar?: string | null
-          title: string
-          content: string
-          topic: string
-          likes?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          username?: string
-          avatar?: string | null
-          title?: string
-          content?: string
-          topic?: string
-          likes?: number
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "forum_posts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      forum_replies: {
-        Row: {
-          id: string
-          post_id: string
-          user_id: string
-          username: string
-          avatar: string | null
-          content: string
-          likes: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          post_id: string
-          user_id: string
-          username: string
-          avatar?: string | null
-          content: string
-          likes?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          post_id?: string
-          user_id?: string
-          username?: string
-          avatar?: string | null
-          content?: string
-          likes?: number
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "forum_replies_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "forum_posts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "forum_replies_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      challenges: {
-        Row: {
-          id: string
-          title: string
-          description: string | null
-          quest_id: string
-          creator_id: string
-          creator_name: string
-          target_score: number
-          expires_at: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          title: string
-          description?: string | null
-          quest_id: string
-          creator_id: string
-          creator_name: string
-          target_score: number
-          expires_at: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          title?: string
-          description?: string | null
-          quest_id?: string
-          creator_id?: string
-          creator_name?: string
-          target_score?: number
-          expires_at?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "challenges_creator_id_fkey"
-            columns: ["creator_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      challenge_participants: {
-        Row: {
-          challenge_id: string
-          user_id: string
-          username: string
-          avatar: string | null
-          score: number | null
-          completed_at: string | null
-        }
-        Insert: {
-          challenge_id: string
-          user_id: string
-          username: string
-          avatar?: string | null
-          score?: number | null
-          completed_at?: string | null
-        }
-        Update: {
-          challenge_id?: string
-          user_id?: string
-          username?: string
-          avatar?: string | null
-          score?: number | null
-          completed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "challenge_participants_challenge_id_fkey"
-            columns: ["challenge_id"]
-            isOneToOne: false
-            referencedRelation: "challenges"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "challenge_participants_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          }
         ]
       }
     }

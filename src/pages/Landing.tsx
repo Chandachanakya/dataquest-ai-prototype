@@ -8,6 +8,14 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <header className="absolute top-0 left-0 right-0 p-4 z-10">
+        <div className="container mx-auto flex items-center justify-start">
+            <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="DataQuestAI Logo" className="h-12 w-12" />
+                <h1 className="text-2xl font-bold text-primary">DataQuestAI</h1>
+            </div>
+        </div>
+      </header>
       {/* Hero Section */}
       <section className="relative overflow-hidden min-h-[90vh] flex items-center">
         <AnimatedBackground />

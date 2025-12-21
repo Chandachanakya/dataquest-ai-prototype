@@ -6,8 +6,7 @@ interface XPBarProps {
 }
 
 const XPBar = ({ currentXP, level }: XPBarProps) => {
-  // XP required for next level (exponential growth)
-  const xpForNextLevel = level * 200;
+  const xpForNextLevel = 200;
   const progressPercentage = (currentXP / xpForNextLevel) * 100;
 
   return (

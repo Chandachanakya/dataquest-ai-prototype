@@ -127,15 +127,10 @@ export const useProfile = () => {
   const addXP = useCallback(async (xpAmount: number) => {
     if (!user || !profile) return { error: new Error('Not authenticated') };
 
-    const XP_PER_LEVEL = 1000;
-    let newXP = profile.xp + xpAmount;
-    const newTotalXP = profile.total_xp + xpAmount;
-    let newLevel = profile.level;
-
-    while (newXP >= XP_PER_LEVEL) {
-      newLevel++;
-      newXP -= XP_PER_LEVEL;
-    }
+    const newTotalXP = (profile.total_xp || 0) + xpAmount;
+    const newLevel = Math.floor(newTotalXP / 200) + 1;
+    const xpForCurrentLevel = (newLevel - 1) * 200;
+    const newXP = newTotalXP - xpForCurrentLevel;
 
     return updateProfile({
       xp: newXP,
