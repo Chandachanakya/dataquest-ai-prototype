@@ -95,6 +95,27 @@ const Courses = () => {
     return Math.round((completed / total) * 100);
   };
 
+  const handleCourseClick = (courseId: string) => {
+    let path = '';
+    switch (courseId) {
+      case 'python':
+        path = '/courses/python';
+        break;
+      case 'ml':
+        path = '/courses/machine-learning';
+        break;
+      case 'visualization':
+        path = '/courses/data-visualization';
+        break;
+      case 'sql':
+        path = '/courses/sql';
+        break;
+      default:
+        return;
+    }
+    navigate(path);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -157,7 +178,7 @@ const Courses = () => {
                 style={{ animationDelay: `${200 + index * 100}ms` }}
                 onMouseEnter={() => setHoveredCourse(course.id)}
                 onMouseLeave={() => setHoveredCourse(null)}
-                onClick={() => course.id === 'python' && navigate('/courses/python')}
+                onClick={() => handleCourseClick(course.id)}
               >
                 {/* Gradient accent bar */}
                 <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${course.color}`} />
@@ -230,7 +251,7 @@ const Courses = () => {
                     variant={progress > 0 ? "default" : "outline"}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (course.id === 'python') navigate('/courses/python');
+                      handleCourseClick(course.id);
                     }}
                   >
                     <Play className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
