@@ -8,7 +8,6 @@ import QuestCard from "@/components/QuestCard";
 import UserAvatar from "@/components/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { aiEngine } from "@/lib/ai";
 import { Quest } from "@/lib/types";
 import { Flame, Trophy, Target, LogOut, Award, BarChart3, MessageSquare, Swords, Sparkles, UserCog, GraduationCap, Loader2, Menu } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +23,7 @@ const Dashboard = () => {
   const [recommendedQuest, setRecommendedQuest] = useState<Quest | null>(null);
   const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [insights, setInsights] = useState<string[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -57,24 +57,17 @@ const Dashboard = () => {
 
       // Get AI recommendation using profile preferences
       if (profile) {
-        const userForAI = {
-          id: user.id,
-          username: profile.username,
-          avatar: profile.avatar,
-          level: profile.level,
-          xp: profile.xp,
-          totalXP: profile.total_xp,
-          streak: profile.streak,
-          badges: profile.badges || [],
-          completedQuests: profile.completed_quests,
-          preferences: {
-            learningStyle: profile.learning_style,
-            difficulty: profile.difficulty,
-            topics: profile.topics || [],
-          },
-        };
-        const recommended = aiEngine.recommendNextQuest(userForAI, questsData, completed);
-        setRecommendedQuest(recommended);
+        const uncompletedQuests = questsData.filter((quest: Quest) => !completed.includes(quest.id));
+        if (uncompletedQuests.length > 0) {
+          setRecommendedQuest(uncompletedQuests[0]);
+        }
+
+        // Mock insights
+        setInsights([
+          "You're doing great on Python quests! Keep it up.",
+          "Consider trying an SQL quest next to broaden your skills.",
+          "You have a 3-day streak! Don't lose it."
+        ]);
       }
     }
   };
@@ -98,25 +91,6 @@ const Dashboard = () => {
   }
 
   if (!user || !profile) return null;
-
-  const userForInsights = {
-    id: user.id,
-    username: profile.username,
-    avatar: profile.avatar,
-    level: profile.level,
-    xp: profile.xp,
-    totalXP: profile.total_xp,
-    streak: profile.streak,
-    badges: profile.badges || [],
-    completedQuests: profile.completed_quests,
-    preferences: {
-      learningStyle: profile.learning_style,
-      difficulty: profile.difficulty,
-      topics: profile.topics || [],
-    },
-  };
-
-  const insights = aiEngine.generateInsights(userForInsights);
 
   return (
     <div className="min-h-screen bg-background">

@@ -7,17 +7,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Send, Sparkles, Loader2, Bot, User as UserIcon, MessageSquare } from "lucide-react";
+import { ArrowLeft, Send, Sparkles, Loader2, Bot, MessageSquare } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import UserAvatar from "@/components/UserAvatar";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
+import { getGroqChatCompletion } from "@/lib/groq";
+import { Message } from "@/lib/types";
 
 const AIMentor = () => {
   const navigate = useNavigate();
@@ -47,62 +41,6 @@ const AIMentor = () => {
     }
   }, [messages]);
 
-  const generateAIResponse = async (userMessage: string): Promise<string> => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    // Topic-based responses
-    if (lowerMessage.includes("python") || lowerMessage.includes("programming")) {
-      return "🐍 Python is a great choice for data science! Here's my advice:\n\n1. **Start with basics**: Focus on variables, data types, and control structures\n2. **Practice with data**: Use libraries like pandas and NumPy early on\n3. **Build projects**: Apply what you learn to real datasets\n\nI recommend starting with our Python Fundamentals quest and then moving to Data Analysis with Pandas. Would you like me to suggest a specific learning path?";
-    }
-    
-    if (lowerMessage.includes("machine learning") || lowerMessage.includes("ml")) {
-      return "🤖 Machine Learning is exciting! Here's a roadmap:\n\n1. **Prerequisites**: Strong Python and statistics foundation\n2. **Core concepts**: Supervised vs unsupervised learning, model evaluation\n3. **Algorithms**: Start with linear regression, decision trees, then neural networks\n4. **Practice**: Kaggle competitions and our ML challenges\n\nBased on your current level, I suggest mastering Python basics first, then diving into our Machine Learning Introduction quest.";
-    }
-    
-    if (lowerMessage.includes("sql") || lowerMessage.includes("database")) {
-      return "💾 SQL is essential for data science! Here's what to focus on:\n\n1. **SELECT statements**: Querying and filtering data\n2. **JOINs**: Combining data from multiple tables\n3. **Aggregations**: GROUP BY, COUNT, SUM, AVG\n4. **Subqueries**: Advanced data manipulation\n\nTry our SQL Fundamentals quest to get hands-on practice with real-world scenarios!";
-    }
-    
-    if (lowerMessage.includes("visualization") || lowerMessage.includes("chart") || lowerMessage.includes("graph")) {
-      return "📊 Data visualization is key to communicating insights! Here's my guidance:\n\n1. **Choose the right chart**: Bar charts for comparisons, line charts for trends, scatter plots for relationships\n2. **Tools**: Start with matplotlib and seaborn in Python\n3. **Design principles**: Keep it simple, use color wisely, tell a story\n\nOur Data Visualization quest covers these concepts with interactive examples!";
-    }
-    
-    if (lowerMessage.includes("help") || lowerMessage.includes("stuck") || lowerMessage.includes("confused")) {
-      return "I'm here to help! 💪\n\nTell me more about what you're working on:\n• Which quest or topic are you studying?\n• What specific concept is challenging?\n• Have you tried any approaches so far?\n\nThe more details you share, the better I can guide you!";
-    }
-    
-    if (lowerMessage.includes("recommend") || lowerMessage.includes("next") || lowerMessage.includes("should i learn")) {
-      // Fetch user progress from database
-      let completedCount = 0;
-      if (user) {
-        const { data } = await supabase
-          .from('user_progress')
-          .select('quest_id')
-          .eq('user_id', user.id)
-          .eq('completed', true);
-        completedCount = data?.length || 0;
-      }
-      
-      if (completedCount === 0) {
-        return "🌟 Since you're just starting out, I recommend:\n\n1. **Python Basics** - Build a strong foundation\n2. **SQL Fundamentals** - Learn to work with data\n3. **Data Analysis Basics** - Start analyzing real datasets\n\nThese three quests will give you a solid base for your data science journey!";
-      } else if (completedCount < 5) {
-        return "📈 Great progress! Based on your learning style, I suggest:\n\n1. Continue building Python skills with intermediate challenges\n2. Explore data visualization techniques\n3. Try collaborative challenges in the Forum\n\nYou're on the right track - keep up the momentum!";
-      } else {
-        return "🚀 You're doing amazing! Time to level up:\n\n1. **Machine Learning** - Start with supervised learning\n2. **Advanced SQL** - Complex queries and optimization\n3. **Real-world Projects** - Apply your skills to Kaggle datasets\n\nYou're ready for more advanced topics. Challenge yourself!";
-      }
-    }
-    
-    // Default responses
-    const responses = [
-      "That's an interesting question! Could you provide more context about what you're trying to learn or achieve?",
-      "I'd love to help you with that! Can you tell me which specific area of data science you're focusing on?",
-      "Great question! To give you the best guidance, could you share:\n• Your current skill level\n• What you're trying to accomplish\n• Any specific challenges you're facing",
-      "I'm here to support your learning journey! Let me know if you'd like recommendations on:\n• Learning paths\n• Specific topics (Python, SQL, ML, etc.)\n• Study strategies\n• Challenge tips",
-    ];
-    
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
-
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -113,11 +51,12 @@ const AIMentor = () => {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput("");
     setIsLoading(true);
 
-    const responseContent = await generateAIResponse(userMessage.content);
+    const responseContent = await getGroqChatCompletion(newMessages);
     
     const aiResponse: Message = {
       id: (Date.now() + 1).toString(),

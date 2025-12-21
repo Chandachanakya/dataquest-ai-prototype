@@ -1,3 +1,4 @@
+
 // Core type definitions for DataQuestAI
 
 export interface User {
@@ -116,4 +117,11 @@ export interface DailyChallenge {
   questId: string;
   date: string;
   bonusXP: number;
+}
+
+export interface Message {
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    timestamp: Date;
 }

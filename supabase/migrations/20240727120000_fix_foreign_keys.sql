@@ -1,0 +1,4 @@
+ALTER TABLE public.forum_posts DROP CONSTRAINT forum_posts_user_id_fkey, ADD CONSTRAINT forum_posts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id);
+ALTER TABLE public.forum_replies DROP CONSTRAINT forum_replies_user_id_fkey, ADD CONSTRAINT forum_replies_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id);
+ALTER TABLE public.challenges DROP CONSTRAINT challenges_creator_id_fkey, ADD CONSTRAINT challenges_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users(id);
+ALTER TABLE public.challenge_participants DROP CONSTRAINT challenge_participants_user_id_fkey, ADD CONSTRAINT challenge_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id);

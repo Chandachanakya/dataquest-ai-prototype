@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -23,18 +23,10 @@ export const useProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-    } else {
-      setProfile(null);
-      setLoading(false);
-    }
-  }, [user]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     if (!user) return;
 
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -55,84 +47,18 @@ export const useProfile = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  // Check streak status and reset if user missed a day
-  const checkAndResetStreak = async (): Promise<number> => {
-    if (!user || !profile) return 0;
-
-    const today = new Date().toISOString().split('T')[0];
-    const lastQuestDate = profile.last_quest_date;
-
-    // No previous quest - streak starts at 0, will become 1 on first completion
-    if (!lastQuestDate) return 0;
-
-    const lastDate = new Date(lastQuestDate).toISOString().split('T')[0];
-    
-    // Same day - streak unchanged
-    if (lastDate === today) return profile.streak;
-
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-    // Yesterday - streak continues (will increment on next completion)
-    if (lastDate === yesterdayStr) return profile.streak;
-
-    // Missed more than one day - reset streak to 0
-    if (profile.streak > 0) {
-      await supabase
-        .from('profiles')
-        .update({ streak: 0 })
-        .eq('id', user.id);
-      
-      setProfile(prev => prev ? { ...prev, streak: 0 } : null);
-      return 0;
-    }
-
-    return 0;
-  };
-
-  // Update streak when completing a quest
-  const updateStreak = async (): Promise<{ error: Error | null }> => {
-    if (!user || !profile) return { error: new Error('Not authenticated') };
-
-    const today = new Date().toISOString().split('T')[0];
-    const lastQuestDate = profile.last_quest_date;
-
-    let newStreak = profile.streak;
-
-    if (!lastQuestDate) {
-      // First quest ever - start streak at 1
-      newStreak = 1;
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
     } else {
-      const lastDate = new Date(lastQuestDate).toISOString().split('T')[0];
-
-      if (lastDate === today) {
-        // Already completed quest today - don't change streak
-        return { error: null };
-      }
-
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-      if (lastDate === yesterdayStr) {
-        // Consecutive day - increment streak
-        newStreak = profile.streak + 1;
-      } else {
-        // Missed days - reset streak to 1
-        newStreak = 1;
-      }
+      setProfile(null);
+      setLoading(false);
     }
+  }, [user, fetchProfile]);
 
-    return updateProfile({
-      streak: newStreak,
-      last_quest_date: today,
-    });
-  };
-
-  const updateProfile = async (updates: Partial<Profile & { last_quest_date?: string | null }>) => {
+  const updateProfile = useCallback(async (updates: Partial<Profile>) => {
     if (!user) return { error: new Error('Not authenticated') };
 
     try {
@@ -145,15 +71,60 @@ export const useProfile = () => {
         return { error };
       }
 
-      // Refresh profile after update
       await fetchProfile();
       return { error: null };
     } catch (err) {
       return { error: err as Error };
     }
-  };
+  }, [user, fetchProfile]);
 
-  const addXP = async (xpAmount: number) => {
+  const checkAndResetStreak = useCallback(async () => {
+    if (!user || !profile || !profile.last_quest_date) return;
+
+    const today = new Date();
+    const lastQuestDate = new Date(profile.last_quest_date);
+
+    const diffTime = Math.abs(today.getTime() - lastQuestDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 1) {
+      await updateProfile({ streak: 0 });
+    }
+  }, [user, profile, updateProfile]);
+
+  const updateStreak = useCallback(async () => {
+    if (!user || !profile) return { error: new Error('Not authenticated') };
+
+    const today = new Date().toISOString().split('T')[0];
+    const lastQuestDate = profile.last_quest_date;
+
+    let newStreak = profile.streak;
+
+    if (!lastQuestDate) {
+      newStreak = 1;
+    } else {
+      const lastDate = new Date(lastQuestDate).toISOString().split('T')[0];
+
+      if (lastDate !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        if (lastDate === yesterdayStr) {
+          newStreak = profile.streak + 1;
+        } else {
+          newStreak = 1;
+        }
+      }
+    }
+
+    return updateProfile({
+      streak: newStreak,
+      last_quest_date: today,
+    });
+  }, [user, profile, updateProfile]);
+
+  const addXP = useCallback(async (xpAmount: number) => {
     if (!user || !profile) return { error: new Error('Not authenticated') };
 
     const XP_PER_LEVEL = 1000;
@@ -161,7 +132,6 @@ export const useProfile = () => {
     const newTotalXP = profile.total_xp + xpAmount;
     let newLevel = profile.level;
 
-    // Handle multiple level-ups if XP gain is large
     while (newXP >= XP_PER_LEVEL) {
       newLevel++;
       newXP -= XP_PER_LEVEL;
@@ -172,7 +142,7 @@ export const useProfile = () => {
       total_xp: newTotalXP,
       level: newLevel,
     });
-  };
+  }, [user, profile, updateProfile]);
 
   return { 
     profile, 

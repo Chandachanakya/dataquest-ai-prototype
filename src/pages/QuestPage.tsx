@@ -15,7 +15,13 @@ const QuestPage = () => {
   const { questId } = useParams<{ questId: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { profile, loading: profileLoading, updateProfile } = useProfile();
+  const {
+    profile,
+    loading: profileLoading,
+    updateProfile,
+    updateStreak,
+    addXP,
+  } = useProfile();
   const [quest, setQuest] = useState<Quest | null>(null);
   const [questLoading, setQuestLoading] = useState(true);
   const [showCongratulations, setShowCongratulations] = useState(false);
@@ -52,31 +58,17 @@ const QuestPage = () => {
   const handleQuestComplete = async (score: number) => {
     if (!quest || !user || !profile) return;
 
-    // Calculate XP earned based on score
     const totalQuestions = quest.questions?.length || 1;
     const scorePercentage = score / totalQuestions;
     const xpEarnedValue = Math.round(quest.xpReward * scorePercentage);
     const perfectScore = scorePercentage === 1;
-    
-    // Store values for congratulations modal
+
     setXpEarned(xpEarnedValue);
     setIsPerfectScore(perfectScore);
 
-    // Calculate new values
-    const newTotalXP = profile.total_xp + xpEarnedValue;
-    const newXP = profile.xp + xpEarnedValue;
-    const xpPerLevel = 1000;
-    let newLevel = profile.level;
-    let remainingXP = newXP;
+    await addXP(xpEarnedValue);
+    await updateStreak();
 
-    // Level up logic: Only increase level when XP reaches or exceeds the threshold (1000 XP per level)
-    // Handle multiple level-ups if user earns a lot of XP
-    while (remainingXP >= xpPerLevel) {
-      newLevel++;
-      remainingXP -= xpPerLevel;
-    }
-
-    // Check for badges
     const badges = [...(profile.badges || [])];
     if (profile.completed_quests === 0 && !badges.includes("First Quest")) {
       badges.push("First Quest");
@@ -85,55 +77,13 @@ const QuestPage = () => {
       badges.push("Perfect Score");
     }
 
-    // Update streak logic: Only increment once per day
-    const today = new Date().toISOString().split('T')[0]; // Get YYYY-MM-DD format
-    const lastQuestDate = profile.last_quest_date as string | null;
-    
-    let newStreak = profile.streak;
-    
-    // If last quest was today, don't increment streak (already incremented today)
-    if (lastQuestDate === today) {
-      newStreak = profile.streak; // Keep current streak
-    } 
-    // If last quest was yesterday, increment streak (continuing streak)
-    else if (lastQuestDate) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
-      if (lastQuestDate === yesterdayStr) {
-        newStreak = profile.streak + 1; // Continue streak
-      } else {
-        newStreak = 1; // Reset streak (gap of more than 1 day)
-      }
-    } else {
-      // No previous quest date, start streak at 1
-      newStreak = 1;
-    }
-    
-    // Check for streak badges
-    if (newStreak >= 7 && !badges.includes("Week Warrior")) {
-      badges.push("Week Warrior");
-    }
-    if (newStreak >= 30 && !badges.includes("Monthly Master")) {
-      badges.push("Monthly Master");
-    }
-
-    // Update profile in database
     await updateProfile({
-      xp: remainingXP,
-      total_xp: newTotalXP,
-      level: newLevel,
       completed_quests: profile.completed_quests + 1,
-      streak: newStreak,
       badges,
-      last_quest_date: today,
     });
 
-    // Save quest progress to database
-    const { error: progressError } = await supabase
-      .from('user_progress')
-      .upsert({
+    await supabase.from('user_progress').upsert(
+      {
         user_id: user.id,
         quest_id: quest.id,
         completed: true,
@@ -141,15 +91,10 @@ const QuestPage = () => {
         xp_earned: xpEarnedValue,
         attempts: 1,
         completed_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,quest_id'
-      });
+      },
+      { onConflict: 'user_id,quest_id' }
+    );
 
-    if (progressError) {
-      console.error('Error saving progress:', progressError);
-    }
-
-    // Show congratulations modal
     setShowCongratulations(true);
   };
 
@@ -171,7 +116,6 @@ const QuestPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
@@ -183,7 +127,6 @@ const QuestPage = () => {
 
       <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-          {/* Quest Header */}
           <div className="text-center space-y-2 px-2">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">{quest.title}</h1>
             <p className="text-base sm:text-lg text-muted-foreground">{quest.description}</p>
@@ -200,7 +143,6 @@ const QuestPage = () => {
             </div>
           </div>
 
-          {/* Quest Content */}
           {quest.type === 'quiz' && quest.questions && (
             <QuizView
               questions={quest.questions}
@@ -228,7 +170,6 @@ const QuestPage = () => {
         </div>
       </main>
 
-      {/* Congratulations Modal */}
       <CongratulationsModal
         open={showCongratulations}
         onClose={() => {
