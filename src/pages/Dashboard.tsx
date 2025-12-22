@@ -79,7 +79,7 @@ const Dashboard = () => {
   const handleLogout = async () => {
     await signOut();
     toast.success("Logged out successfully");
-    navigate('/');
+    navigate('/signin');
   };
 
   if (authLoading || profileLoading) {
