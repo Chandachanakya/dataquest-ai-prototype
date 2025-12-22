@@ -33,44 +33,44 @@ const Dashboard = () => {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
+    const loadData = async () => {
+      // Load quests from JSON
+      const questsRes = await fetch('/data/sampleQuests.json');
+      const questsData = await questsRes.json();
+      setQuests(questsData);
+
+      // Load completed quests from database
+      if (user) {
+        const { data: progressData } = await supabase
+          .from('user_progress')
+          .select('quest_id')
+          .eq('user_id', user.id)
+          .eq('completed', true);
+
+        const completed = progressData?.map(p => p.quest_id) || [];
+        setCompletedQuestIds(completed);
+
+        // Get AI recommendation using profile preferences
+        if (profile) {
+          const uncompletedQuests = questsData.filter((quest: Quest) => !completed.includes(quest.id));
+          if (uncompletedQuests.length > 0) {
+            setRecommendedQuest(uncompletedQuests[0]);
+          }
+
+          // Mock insights
+          setInsights([
+            "You're doing great on Python quests! Keep it up.",
+            "Consider trying an SQL quest next to broaden your skills.",
+            "You have a 1-day streak! Don\'t lose it."
+          ]);
+        }
+      }
+    };
+
     if (user && profile) {
       loadData();
     }
   }, [user, profile]);
-
-  const loadData = async () => {
-    // Load quests from JSON
-    const questsRes = await fetch('/data/sampleQuests.json');
-    const questsData = await questsRes.json();
-    setQuests(questsData);
-
-    // Load completed quests from database
-    if (user) {
-      const { data: progressData } = await supabase
-        .from('user_progress')
-        .select('quest_id')
-        .eq('user_id', user.id)
-        .eq('completed', true);
-
-      const completed = progressData?.map(p => p.quest_id) || [];
-      setCompletedQuestIds(completed);
-
-      // Get AI recommendation using profile preferences
-      if (profile) {
-        const uncompletedQuests = questsData.filter((quest: Quest) => !completed.includes(quest.id));
-        if (uncompletedQuests.length > 0) {
-          setRecommendedQuest(uncompletedQuests[0]);
-        }
-
-        // Mock insights
-        setInsights([
-          "You're doing great on Python quests! Keep it up.",
-          "Consider trying an SQL quest next to broaden your skills.",
-          "You have a 3-day streak! Don't lose it."
-        ]);
-      }
-    }
-  };
 
   const handleStartQuest = (questId: string) => {
     navigate(`/quest/${questId}`);
@@ -79,7 +79,7 @@ const Dashboard = () => {
   const handleLogout = async () => {
     await signOut();
     toast.success("Logged out successfully");
-    navigate('/signin');
+    navigate('/');
   };
 
   if (authLoading || profileLoading) {
