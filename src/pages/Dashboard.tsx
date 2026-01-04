@@ -43,11 +43,11 @@ const Dashboard = () => {
       if (user) {
         const { data: progressData } = await supabase
           .from('user_progress')
-          .select('*')
+          .select('quest_id')
           .eq('user_id', user.id)
           .eq('completed', true);
 
-        const completed = progressData?.map((p: { quest_id: string }) => p.quest_id) || [];
+        const completed = progressData?.map(p => p.quest_id) || [];
         setCompletedQuestIds(completed);
 
         // Get AI recommendation using profile preferences
