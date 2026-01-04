@@ -82,8 +82,9 @@ const QuestPage = () => {
       badges,
     });
 
-    await supabase.from('user_progress').upsert(
-      {
+    // Save progress
+    try {
+      await supabase.from('user_progress').insert({
         user_id: user.id,
         quest_id: quest.id,
         completed: true,
@@ -91,9 +92,10 @@ const QuestPage = () => {
         xp_earned: xpEarnedValue,
         attempts: 1,
         completed_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id,quest_id' }
-    );
+      } as never);
+    } catch (e) {
+      console.error('Failed to save progress:', e);
+    }
 
     setShowCongratulations(true);
   };
