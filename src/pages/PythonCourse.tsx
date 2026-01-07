@@ -1,79 +1,148 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowLeft, Zap, Trophy, Star, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LearningPathMap } from "@/components/course/LearningPathMap";
 import { ModulePage } from "@/components/course/ModulePage";
 import { XPDisplay } from "@/components/course/XPDisplay";
-import { 
-  pythonModules, 
-  CourseProgress, 
-  getInitialProgress, 
-  STORAGE_KEY 
+import {
+  pythonModules,
+  CourseProgress,
+  getInitialProgress,
 } from "@/lib/pythonCourseData";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const PythonCourse = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedModule, setSelectedModule] = useState<number | null>(null);
   const [progress, setProgress] = useState<CourseProgress>(getInitialProgress);
 
-  // Load progress from localStorage
+  const courseId = "python-for-data-science";
+
+  // Load progress from Supabase database
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        setProgress(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse saved progress");
+    const fetchProgress = async () => {
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("user_course_progress")
+        .select("module_id, lesson_id, quiz_score, completed_at")
+        .eq("user_id", user.id)
+        .eq("course_id", courseId);
+
+      if (data) {
+        const newProgress = getInitialProgress();
+        let totalXP = 0;
+        const completedModules = new Set<number>();
+        const completedBossFights = new Set<number>();
+        const completedChallenges = new Set<string>();
+
+        for (const record of data) {
+            const module = pythonModules.find(m => m.id === record.module_id);
+            if (module) {
+                if (record.lesson_id === 999) { // Boss fight
+                    completedBossFights.add(module.id);
+                    totalXP += module.bossFight.xpReward;
+                    completedModules.add(module.id);
+                } else {
+                    const challenge = module.challenges.find(c => c.id === `${module.id}-${record.lesson_id}`);
+                    if (challenge) {
+                        completedChallenges.add(challenge.id);
+                        totalXP += challenge.xpReward;
+                    }
+                }
+            }
+        }
+
+        newProgress.totalXP = totalXP;
+        newProgress.completedModules = [...completedModules];
+        newProgress.completedBossFights = [...completedBossFights];
+        newProgress.completedChallenges = [...completedChallenges];
+        if (newProgress.completedModules.length > 0) {
+            newProgress.currentLevel = Math.max(...newProgress.completedModules) + 1;
+        }
+
+
+        setProgress(newProgress);
+      } else if (error) {
+        toast.error("Error fetching your progress. Please refresh the page.");
       }
+    };
+
+    fetchProgress();
+  }, [user]);
+
+
+  const handleChallengeComplete = useCallback(async (challengeId: string, xp: number) => {
+    if (!user || progress.completedChallenges.includes(challengeId)) return;
+
+    const [moduleId, lessonId] = challengeId.split('-').map(Number);
+
+    const { error } = await supabase
+        .from('user_course_progress')
+        .insert({
+            user_id: user.id,
+            course_id: courseId,
+            module_id: moduleId,
+            lesson_id: lessonId,
+            quiz_score: 100 // Assuming 100% for completion
+        });
+
+    if (error) {
+        toast.error("Failed to save your progress. Please try again.");
+    } else {
+        setProgress(prev => ({
+            ...prev,
+            totalXP: prev.totalXP + xp,
+            completedChallenges: [...prev.completedChallenges, challengeId]
+        }));
     }
-  }, []);
+}, [user, progress.completedChallenges, courseId]);
 
-  // Save progress to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  }, [progress]);
 
-  const handleChallengeComplete = useCallback((challengeId: string, xp: number) => {
-    setProgress(prev => {
-      if (prev.completedChallenges.includes(challengeId)) {
-        return prev;
-      }
-      return {
-        ...prev,
-        totalXP: prev.totalXP + xp,
-        completedChallenges: [...prev.completedChallenges, challengeId]
-      };
-    });
-  }, []);
+  const handleBossComplete = useCallback(async (moduleId: number, xp: number) => {
+    if (!user || progress.completedBossFights.includes(moduleId)) return;
 
-  const handleBossComplete = useCallback((moduleId: number, xp: number) => {
-    setProgress(prev => {
-      if (prev.completedBossFights.includes(moduleId)) {
-        return prev;
-      }
-      
-      const newCompletedModules = prev.completedModules.includes(moduleId)
-        ? prev.completedModules
-        : [...prev.completedModules, moduleId];
-      
-      const nextLevel = Math.min(moduleId + 1, pythonModules.length);
-      
-      return {
-        ...prev,
-        totalXP: prev.totalXP + xp,
-        completedBossFights: [...prev.completedBossFights, moduleId],
-        completedModules: newCompletedModules,
-        currentLevel: Math.max(prev.currentLevel, nextLevel)
-      };
-    });
-  }, []);
+    const { error } = await supabase
+        .from('user_course_progress')
+        .insert({
+            user_id: user.id,
+            course_id: courseId,
+            module_id: moduleId,
+            lesson_id: 999, // Special ID for boss fights
+            quiz_score: 100 // Assuming 100% for completion
+        });
 
-  const currentModule = selectedModule 
-    ? pythonModules.find(m => m.id === selectedModule) 
+    if (error) {
+        toast.error("Failed to save your progress. Please try again.");
+    } else {
+        setProgress(prev => {
+            const newCompletedModules = prev.completedModules.includes(moduleId)
+                ? prev.completedModules
+                : [...prev.completedModules, moduleId];
+            
+            const nextLevel = Math.min(moduleId + 1, pythonModules.length);
+
+            return {
+                ...prev,
+                totalXP: prev.totalXP + xp,
+                completedBossFights: [...prev.completedBossFights, moduleId],
+                completedModules: newCompletedModules,
+                currentLevel: Math.max(prev.currentLevel, nextLevel)
+            };
+        });
+    }
+}, [user, progress.completedBossFights, courseId]);
+  
+  const currentModule = selectedModule
+    ? pythonModules.find(m => m.id === selectedModule)
     : null;
 
   if (currentModule) {
