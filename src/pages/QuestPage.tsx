@@ -27,6 +27,8 @@ const QuestPage = () => {
   const [showCongratulations, setShowCongratulations] = useState(false);
   const [xpEarned, setXpEarned] = useState(0);
   const [isPerfectScore, setIsPerfectScore] = useState(false);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState<Date | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -55,16 +57,65 @@ const QuestPage = () => {
       });
   }, [questId, navigate]);
 
+  // Track quest start time and create attempt record
+  useEffect(() => {
+    const createAttempt = async () => {
+      if (!quest || !user || attemptId) return;
+
+      const now = new Date();
+      setStartTime(now);
+
+      const { data, error } = await supabase
+        .from('quest_attempts')
+        .insert({
+          user_id: user.id,
+          quest_id: quest.id,
+          started_at: now.toISOString(),
+          status: 'started'
+        })
+        .select('id')
+        .single();
+
+      if (error) {
+        console.error('Failed to create quest attempt:', error);
+      } else if (data) {
+        setAttemptId(data.id);
+      }
+    };
+
+    createAttempt();
+  }, [quest, user, attemptId]);
+
   const handleQuestComplete = async (score: number) => {
     if (!quest || !user || !profile) return;
 
     const totalQuestions = quest.questions?.length || 1;
-    const scorePercentage = score / totalQuestions;
+    // Cap score percentage at 100% to prevent bugs from showing >100%
+    const scorePercentage = Math.min(1.0, score / totalQuestions);
     const xpEarnedValue = Math.round(quest.xpReward * scorePercentage);
     const perfectScore = scorePercentage === 1;
 
     setXpEarned(xpEarnedValue);
     setIsPerfectScore(perfectScore);
+
+    // Calculate completion time
+    const completedAt = new Date();
+    const completionTimeSeconds = startTime
+      ? Math.round((completedAt.getTime() - startTime.getTime()) / 1000)
+      : null;
+
+    // Update quest_attempts table
+    if (attemptId) {
+      await supabase
+        .from('quest_attempts')
+        .update({
+          completed_at: completedAt.toISOString(),
+          score: Math.round(scorePercentage * 100),
+          completion_time: completionTimeSeconds,
+          status: 'completed'
+        })
+        .eq('id', attemptId);
+    }
 
     await addXP(xpEarnedValue);
     await updateStreak();
@@ -90,7 +141,7 @@ const QuestPage = () => {
         score: Math.round(scorePercentage * 100),
         xp_earned: xpEarnedValue,
         attempts: 1,
-        completed_at: new Date().toISOString(),
+        completed_at: completedAt.toISOString(),
       },
       { onConflict: 'user_id,quest_id' }
     );

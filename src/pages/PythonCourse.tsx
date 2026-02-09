@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { checkAndActOnLearnerState } from "@/lib/learnerEngine";
 
 const PythonCourse = () => {
   const navigate = useNavigate();
@@ -43,30 +44,34 @@ const PythonCourse = () => {
         const completedModules = new Set<number>();
         const completedBossFights = new Set<number>();
         const completedChallenges = new Set<string>();
+        const completedVideos = new Set<number>();
 
         for (const record of data) {
-            const module = pythonModules.find(m => m.id === record.module_id);
-            if (module) {
-                if (record.lesson_id === 999) { // Boss fight
-                    completedBossFights.add(module.id);
-                    totalXP += module.bossFight.xpReward;
-                    completedModules.add(module.id);
-                } else {
-                    const challenge = module.challenges.find(c => c.id === `${module.id}-${record.lesson_id}`);
-                    if (challenge) {
-                        completedChallenges.add(challenge.id);
-                        totalXP += challenge.xpReward;
-                    }
-                }
+          const module = pythonModules.find(m => m.id === record.module_id);
+          if (module) {
+            if (record.lesson_id === 999) { // Boss fight
+              completedBossFights.add(module.id);
+              totalXP += module.bossFight.xpReward;
+              completedModules.add(module.id);
+            } else if (record.lesson_id === 998) { // Video watched
+              completedVideos.add(module.id);
+            } else {
+              const challenge = module.challenges.find(c => c.id === `${module.id}-${record.lesson_id}`);
+              if (challenge) {
+                completedChallenges.add(challenge.id);
+                totalXP += challenge.xpReward;
+              }
             }
+          }
         }
 
         newProgress.totalXP = totalXP;
         newProgress.completedModules = [...completedModules];
         newProgress.completedBossFights = [...completedBossFights];
         newProgress.completedChallenges = [...completedChallenges];
+        newProgress.completedVideos = [...completedVideos];
         if (newProgress.completedModules.length > 0) {
-            newProgress.currentLevel = Math.max(...newProgress.completedModules) + 1;
+          newProgress.currentLevel = Math.max(...newProgress.completedModules) + 1;
         }
 
 
@@ -86,61 +91,91 @@ const PythonCourse = () => {
     const [moduleId, lessonId] = challengeId.split('-').map(Number);
 
     const { error } = await supabase
-        .from('user_course_progress')
-        .insert({
-            user_id: user.id,
-            course_id: courseId,
-            module_id: moduleId,
-            lesson_id: lessonId,
-            quiz_score: 100 // Assuming 100% for completion
-        });
+      .from('user_course_progress')
+      .insert({
+        user_id: user.id,
+        course_id: courseId,
+        module_id: moduleId,
+        lesson_id: lessonId,
+        quiz_score: 100 // Assuming 100% for completion
+      });
 
     if (error) {
-        toast.error("Failed to save your progress. Please try again.");
+      toast.error("Failed to save your progress. Please try again.");
     } else {
-        setProgress(prev => ({
-            ...prev,
-            totalXP: prev.totalXP + xp,
-            completedChallenges: [...prev.completedChallenges, challengeId]
-        }));
+      setProgress(prev => ({
+        ...prev,
+        totalXP: prev.totalXP + xp,
+        completedChallenges: [...prev.completedChallenges, challengeId]
+      }));
     }
-}, [user, progress.completedChallenges, courseId]);
+  }, [user, progress.completedChallenges, courseId]);
 
 
   const handleBossComplete = useCallback(async (moduleId: number, xp: number) => {
     if (!user || progress.completedBossFights.includes(moduleId)) return;
 
     const { error } = await supabase
-        .from('user_course_progress')
-        .insert({
-            user_id: user.id,
-            course_id: courseId,
-            module_id: moduleId,
-            lesson_id: 999, // Special ID for boss fights
-            quiz_score: 100 // Assuming 100% for completion
-        });
+      .from('user_course_progress')
+      .insert({
+        user_id: user.id,
+        course_id: courseId,
+        module_id: moduleId,
+        lesson_id: 999, // Special ID for boss fights
+        quiz_score: 100 // Assuming 100% for completion
+      });
 
     if (error) {
-        toast.error("Failed to save your progress. Please try again.");
+      toast.error("Failed to save your progress. Please try again.");
     } else {
-        setProgress(prev => {
-            const newCompletedModules = prev.completedModules.includes(moduleId)
-                ? prev.completedModules
-                : [...prev.completedModules, moduleId];
-            
-            const nextLevel = Math.min(moduleId + 1, pythonModules.length);
+      setProgress(prev => {
+        const newCompletedModules = prev.completedModules.includes(moduleId)
+          ? prev.completedModules
+          : [...prev.completedModules, moduleId];
 
-            return {
-                ...prev,
-                totalXP: prev.totalXP + xp,
-                completedBossFights: [...prev.completedBossFights, moduleId],
-                completedModules: newCompletedModules,
-                currentLevel: Math.max(prev.currentLevel, nextLevel)
-            };
-        });
+        const nextLevel = Math.min(moduleId + 1, pythonModules.length);
+
+        return {
+          ...prev,
+          totalXP: prev.totalXP + xp,
+          completedBossFights: [...prev.completedBossFights, moduleId],
+          completedModules: newCompletedModules,
+          currentLevel: Math.max(prev.currentLevel, nextLevel)
+        };
+      });
+
+      // PHASE 0: Recompute learner state after quest completion
+      try {
+        await checkAndActOnLearnerState(user.id);
+      } catch (error) {
+        console.error('Error recomputing learner state:', error);
+      }
     }
-}, [user, progress.completedBossFights, courseId]);
-  
+  }, [user, progress.completedBossFights, courseId]);
+
+  const handleVideoWatched = useCallback(async (moduleId: number) => {
+    if (!user || progress.completedVideos.includes(moduleId)) return;
+
+    const { error } = await supabase
+      .from('user_course_progress')
+      .insert({
+        user_id: user.id,
+        course_id: courseId,
+        module_id: moduleId,
+        lesson_id: 998, // Special ID for video watched
+        quiz_score: 100
+      });
+
+    if (error) {
+      console.error("Failed to save video progress:", error);
+    } else {
+      setProgress(prev => ({
+        ...prev,
+        completedVideos: [...prev.completedVideos, moduleId]
+      }));
+    }
+  }, [user, progress.completedVideos, courseId]);
+
   const currentModule = selectedModule
     ? pythonModules.find(m => m.id === selectedModule)
     : null;
@@ -153,6 +188,7 @@ const PythonCourse = () => {
         onBack={() => setSelectedModule(null)}
         onChallengeComplete={handleChallengeComplete}
         onBossComplete={handleBossComplete}
+        onVideoWatched={handleVideoWatched}
       />
     );
   }
@@ -189,7 +225,7 @@ const PythonCourse = () => {
             Your Quest Awaits, Data Warrior
           </h2>
           <p className="text-muted-foreground text-lg">
-            Master Python through 5 epic levels. Complete challenges, defeat bosses, 
+            Master Python through 5 epic levels. Complete challenges, defeat bosses,
             and become a Data Science champion.
           </p>
         </motion.div>
@@ -246,8 +282,8 @@ const PythonCourse = () => {
           <h3 className="text-xl font-bold text-center text-foreground mb-8">
             Learning Path
           </h3>
-          <LearningPathMap 
-            progress={progress} 
+          <LearningPathMap
+            progress={progress}
             onSelectModule={setSelectedModule}
           />
         </motion.div>

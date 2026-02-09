@@ -16,17 +16,20 @@ interface ModulePageProps {
   onBack: () => void;
   onChallengeComplete: (challengeId: string, xp: number) => void;
   onBossComplete: (moduleId: number, xp: number) => void;
+  onVideoWatched: (moduleId: number) => void;
 }
 
-export const ModulePage = ({ 
-  module, 
-  progress, 
-  onBack, 
-  onChallengeComplete, 
-  onBossComplete 
+export const ModulePage = ({
+  module,
+  progress,
+  onBack,
+  onChallengeComplete,
+  onBossComplete,
+  onVideoWatched
 }: ModulePageProps) => {
   const [activeTab, setActiveTab] = useState("lesson");
   const isBossCompleted = progress.completedBossFights.includes(module.id);
+  const isVideoWatched = progress.completedVideos.includes(module.id);
 
   const handleLessonComplete = () => {
     setActiveTab("challenge");
@@ -74,7 +77,7 @@ export const ModulePage = ({
               </div>
             </div>
           </div>
-          
+
           {/* XP Display */}
           <div className="mt-4">
             <XPDisplay progress={progress} />
@@ -125,9 +128,11 @@ export const ModulePage = ({
             </TabsList>
 
             <TabsContent value="lesson" className="mt-6">
-              <ModuleLesson 
-                module={module} 
+              <ModuleLesson
+                module={module}
                 onComplete={handleLessonComplete}
+                onVideoWatched={onVideoWatched}
+                isVideoWatched={isVideoWatched}
               />
             </TabsContent>
 

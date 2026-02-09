@@ -1,73 +1,177 @@
-# Welcome to your Lovable project
+# DataQuestAI - Personalized Learning Platform
 
-## Project info
+> An AI-powered adaptive learning platform with event-driven analytics and intelligent personalization.
 
-**URL**: https://lovable.dev/projects/412ed4c0-5bb1-4605-9fad-6ca2861d685a
+## 🎯 Project Overview
 
-## How can I edit this code?
+DataQuestAI is a gamified learning platform that uses **rule-based AI** to personalize the learning experience based on real-time performance data. The system tracks every quest attempt, analyzes learner behavior, and automatically adapts content recommendations.
 
-There are several ways of editing your application.
+**Key Innovation**: Event-driven analytics with auditable decision logging - every personalization action is tracked and explained.
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/412ed4c0-5bb1-4605-9fad-6ca2861d685a) and start prompting.
+## ✨ Features
 
-Changes made via Lovable will be committed automatically to this repo.
+### 🎮 Core Learning Experience
+- **Interactive Quests**: Quiz-based, coding challenges, and game-based learning
+- **XP & Leveling System**: Gamified progression with badges and achievements
+- **Streak Tracking**: Daily engagement rewards
+- **Multiple Courses**: Python, Machine Learning, SQL, Data Visualization
 
-**Use your preferred IDE**
+### 🤖 AI Personalization Engine
+- **Learner State Detection**: Automatically classifies users as STRUGGLING, FAST, CONSISTENT, or DROP_RISK
+- **Adaptive Recommendations**: Quest difficulty adjusts based on performance
+- **State-Based Insights**: Personalized feedback and encouragement
+- **Decision Logging**: Full transparency - see why the system made each decision
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 📊 Analytics Dashboard
+- **Learning Score (0-100)**: Average quiz performance
+- **Quest Attempts**: Total attempts with persistence tracking
+- **Avg Time per Quest**: Efficiency metrics
+- **Learning Trend**: Improvement over time
+- **Engagement XP**: Overall progress tracking
+- **AI Personalization History**: Auditable decision logs
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 👥 Social Features
+- **Community Forum**: Ask questions, share knowledge
+- **Peer Challenges**: Compete with friends
+- **Leaderboard**: Global rankings
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+## 🏗️ Technical Architecture
+
+### Tech Stack
+- **Frontend**: React + TypeScript + Vite
+- **UI**: shadcn-ui + Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Auth + RLS)
+- **State Management**: TanStack Query
+- **Routing**: React Router
+
+### Database Schema
+- `profiles` - User data and preferences
+- `quest_attempts` - **Event-driven tracking** of every attempt
+- `user_progress` - Aggregated quest completion data
+- `decision_logs` - **Auditable AI decisions**
+- `learner_states` - Computed learner classifications
+
+### Learner State Engine
+
+Located in `src/lib/learnerEngine.ts`:
+
+1. **Metric Calculation**: Queries `quest_attempts` for avg score, completion time, activity frequency
+2. **State Detection**: Rule-based classification with priority order
+3. **Action Triggering**: Logs personalization decisions to `decision_logs`
+
+**State Definitions**:
+- **DROP_RISK**: Inactive > 7 days
+- **STRUGGLING**: Avg score < 50%, attempts ≥ 3
+- **FAST**: Avg score > 80%, XP > 200
+- **CONSISTENT**: Default (steady progress)
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+ and npm
+- Supabase account
+
+### Installation
+
+```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
+cd dataquest-ai-prototype
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Set up environment variables
+# Create .env file with your Supabase credentials
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Run database migrations (see MIGRATION_GUIDE.md)
+
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Database Setup
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for detailed instructions on running SQL migrations.
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 📚 Documentation
 
-## What technologies are used for this project?
+- **[Walkthrough](./walkthrough.md)**: Implementation details and testing
+- **[Migration Guide](./MIGRATION_GUIDE.md)**: Database setup instructions
+- **[Testing Guide](./TESTING_GUIDE.md)**: How to simulate different learner states
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🔮 Future Scope
 
-## How can I deploy this project?
+The current system establishes a **solid data foundation** for advanced ML-based personalization:
 
-Simply open [Lovable](https://lovable.dev/projects/412ed4c0-5bb1-4605-9fad-6ca2861d685a) and click on Share -> Publish.
+### Phase 1: Machine Learning Models
+- **Collaborative Filtering**: Recommend quests based on similar users
+- **Predictive Analytics**: Forecast drop risk before it happens
+- **Clustering**: Discover new learner archetypes beyond the 4 states
 
-## Can I connect a custom domain to my Lovable project?
+### Phase 2: Reinforcement Learning
+- **RL-Based Quest Sequencing**: Optimize learning path for each user
+- **Multi-Armed Bandits**: A/B test different intervention strategies
+- **Adaptive Difficulty**: Real-time quest difficulty adjustment
 
-Yes, you can!
+### Phase 3: Advanced Features
+- **Natural Language Processing**: Analyze forum posts for sentiment and topic modeling
+- **Computer Vision**: Automated code review for coding challenges
+- **Spaced Repetition**: Intelligent review scheduling based on forgetting curves
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Phase 4: Scalability
+- **Real-Time Analytics**: Stream processing for instant state updates
+- **Distributed Computing**: Handle millions of concurrent users
+- **Edge Computing**: Offline-first mobile app with sync
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+**Note**: The current rule-based system is intentionally simple but **production-ready**. It provides:
+- ✅ Defensible data (event-driven, not inferred)
+- ✅ Auditable decisions (full transparency)
+- ✅ Proven personalization (state-based recommendations work)
+- ✅ ML-ready foundation (clean data schema for future models)
+
+---
+
+## 🧪 Testing
+
+### Run Simulations
+```bash
+# See TESTING_GUIDE.md for detailed instructions
+# Use simulation_data.sql to generate test scenarios
+```
+
+### Verify Implementation
+1. Complete a quest → Check `quest_attempts` table
+2. View Dashboard → Check personalized insights
+3. View Analytics → Check decision logs
+
+---
+
+## 📄 License
+
+This project was created with [Lovable](https://lovable.dev).
+
+---
+
+## 🤝 Contributing
+
+This is a prototype/academic project. For questions or suggestions, please open an issue.
+
+---
+
+## 📞 Support
+
+For deployment or custom domain setup, see [Lovable Documentation](https://docs.lovable.dev).
+

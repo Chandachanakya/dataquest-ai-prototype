@@ -24,6 +24,7 @@ export interface Module {
   questName: string;
   questDescription: string;
   xpRequired: number;
+  videoUrl?: string; // YouTube embed URL
   lessons: LessonContent[];
   challenges: Challenge[];
   bossFight: {
@@ -46,6 +47,7 @@ export const pythonModules: Module[] = [
     questName: "Fix the Broken Inventory",
     questDescription: "Master Lists and Dictionaries to repair the ancient inventory system",
     xpRequired: 0,
+    videoUrl: "https://www.youtube.com/embed/kqtD5dpn9C8", // Python for Beginners
     lessons: [
       {
         title: "Welcome to Python",
@@ -171,6 +173,7 @@ health = player.get("health", 100)`,
     questName: "Speed Up the Computation",
     questDescription: "Use vectorization to beat the timer and unlock the power of NumPy",
     xpRequired: 300,
+    videoUrl: "https://www.youtube.com/embed/QUT1VHiLmmI", // NumPy Tutorial
     lessons: [
       {
         title: "Enter NumPy",
@@ -300,6 +303,7 @@ selected = data[indices]  # [1, 3, 2]`,
     questName: "Find the Hidden Insights",
     questDescription: "Master .groupby() and filtering to uncover secrets in messy CSV data",
     xpRequired: 600,
+    videoUrl: "https://www.youtube.com/embed/vmEHCJofslg", // Pandas Tutorial
     lessons: [
       {
         title: "Meet Pandas",
@@ -436,6 +440,7 @@ sales['pct_of_total'] = sales.groupby('region')['revenue'].transform(
     questName: "Reveal the Secret Path",
     questDescription: "Draw the correlation heatmap to unlock hidden patterns in your data",
     xpRequired: 900,
+    videoUrl: "https://www.youtube.com/embed/DAQNHzOcO5A", // Data Visualization
     lessons: [
       {
         title: "Matplotlib Foundations",
@@ -585,6 +590,7 @@ plt.tight_layout()`,
     questName: "The Ultimate Analysis",
     questDescription: "Combine all your skills in a complete Exploratory Data Analysis project",
     xpRequired: 1200,
+    videoUrl: "https://www.youtube.com/embed/xi0vhXFPegw", // EDA Tutorial
     lessons: [
       {
         title: "EDA Framework",
@@ -745,6 +751,7 @@ export interface CourseProgress {
   completedModules: number[];
   completedChallenges: string[];
   completedBossFights: number[];
+  completedVideos: number[]; // Module IDs with watched videos
 }
 
 export const getInitialProgress = (): CourseProgress => ({
@@ -752,7 +759,8 @@ export const getInitialProgress = (): CourseProgress => ({
   totalXP: 0,
   completedModules: [],
   completedChallenges: [],
-  completedBossFights: []
+  completedBossFights: [],
+  completedVideos: []
 });
 
 export const STORAGE_KEY = 'python_ds_course_progress';

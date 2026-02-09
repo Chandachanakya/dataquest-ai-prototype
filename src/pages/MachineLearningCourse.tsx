@@ -7,16 +7,19 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { MLLearningPathMap } from "@/components/course/MLLearningPathMap";
 import { MLModulePage } from "@/components/course/MLModulePage";
 import { XPDisplay } from "@/components/course/XPDisplay";
-import { 
-  mlModules, 
-  CourseProgress, 
-  getInitialProgress, 
-  ML_STORAGE_KEY 
+import {
+  mlModules,
+  CourseProgress,
+  getInitialProgress,
+  ML_STORAGE_KEY
 } from "@/lib/mlCourseData";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { checkAndActOnLearnerState } from "@/lib/learnerEngine";
 
 const MachineLearningCourse = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedModule, setSelectedModule] = useState<number | null>(null);
   const [progress, setProgress] = useState<CourseProgress>(getInitialProgress);
 
@@ -55,13 +58,13 @@ const MachineLearningCourse = () => {
       if (prev.completedBossFights.includes(moduleId)) {
         return prev;
       }
-      
+
       const newCompletedModules = prev.completedModules.includes(moduleId)
         ? prev.completedModules
         : [...prev.completedModules, moduleId];
-      
+
       const nextLevel = Math.min(moduleId + 1, mlModules.length);
-      
+
       return {
         ...prev,
         totalXP: prev.totalXP + xp,
@@ -70,10 +73,17 @@ const MachineLearningCourse = () => {
         currentLevel: Math.max(prev.currentLevel, nextLevel)
       };
     });
-  }, []);
 
-  const currentModule = selectedModule 
-    ? mlModules.find(m => m.id === selectedModule) 
+    // PHASE 0: Recompute learner state after quest completion
+    if (user) {
+      checkAndActOnLearnerState(user.id).catch(error => {
+        console.error('Error recomputing learner state:', error);
+      });
+    }
+  }, [user]);
+
+  const currentModule = selectedModule
+    ? mlModules.find(m => m.id === selectedModule)
     : null;
 
   if (currentModule) {
@@ -120,7 +130,7 @@ const MachineLearningCourse = () => {
             Your ML Journey Begins
           </h2>
           <p className="text-muted-foreground text-lg">
-            Master Machine Learning through 5 epic levels. From fundamentals to neural networks, 
+            Master Machine Learning through 5 epic levels. From fundamentals to neural networks,
             become an ML champion.
           </p>
         </motion.div>
@@ -177,8 +187,8 @@ const MachineLearningCourse = () => {
           <h3 className="text-xl font-bold text-center text-foreground mb-8">
             Learning Path
           </h3>
-          <MLLearningPathMap 
-            progress={progress} 
+          <MLLearningPathMap
+            progress={progress}
             onSelectModule={setSelectedModule}
           />
         </motion.div>

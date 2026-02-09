@@ -5,11 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import UserAvatar from "@/components/UserAvatar";
+import { supabase } from "@/integrations/supabase/client";
 
 const AVATAR_OPTIONS = ["🧙‍♂️", "🥷", "🧠", "💻", "🐍", "🚀", "🎯", "⚡", "🔥", "🌟", "🎮", "🤖"];
 
@@ -23,9 +25,10 @@ const Profile = () => {
   const [difficulty, setDifficulty] = useState<"beginner" | "intermediate" | "advanced">("beginner");
   const [topics, setTopics] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const availableTopics = [
-    "python", "javascript", "react", "sql", "machine-learning", 
+    "python", "javascript", "react", "sql", "machine-learning",
     "data-science", "algorithms", "backend", "frontend", "databases"
   ];
 
@@ -46,8 +49,8 @@ const Profile = () => {
   }, [profile]);
 
   const handleTopicToggle = (topic: string) => {
-    setTopics(prev => 
-      prev.includes(topic) 
+    setTopics(prev =>
+      prev.includes(topic)
         ? prev.filter(t => t !== topic)
         : [...prev, topic]
     );
@@ -55,7 +58,7 @@ const Profile = () => {
 
   const handleSave = async () => {
     if (!profile) return;
-    
+
     if (!username.trim()) {
       toast.error("Username cannot be empty");
       return;
@@ -79,6 +82,35 @@ const Profile = () => {
     }
 
     toast.success("Profile updated successfully!");
+  };
+
+  const handleDeleteProfile = async () => {
+    if (!user) return;
+
+    setIsDeleting(true);
+
+    try {
+      // Delete user data from Supabase Auth
+      const { error } = await supabase.auth.admin.deleteUser(user.id);
+
+      if (error) {
+        // If admin delete fails, try regular account deletion
+        const { error: deleteError } = await supabase.rpc('delete_user');
+
+        if (deleteError) {
+          throw deleteError;
+        }
+      }
+
+      // Sign out and redirect
+      await supabase.auth.signOut();
+      toast.success("Profile deleted successfully");
+      navigate('/signin');
+    } catch (error) {
+      console.error('Error deleting profile:', error);
+      toast.error("Failed to delete profile. Please try again or contact support.");
+      setIsDeleting(false);
+    }
   };
 
   if (authLoading || profileLoading) {
@@ -133,11 +165,10 @@ const Profile = () => {
                     key={avatarOption}
                     type="button"
                     onClick={() => setAvatar(avatarOption)}
-                    className={`text-3xl p-2 rounded-lg border-2 transition-all hover:scale-110 ${
-                      avatar === avatarOption
-                        ? "border-primary bg-primary/10 shadow-glow"
-                        : "border-border hover:border-primary/50"
-                    }`}
+                    className={`text-3xl p-2 rounded-lg border-2 transition-all hover:scale-110 ${avatar === avatarOption
+                      ? "border-primary bg-primary/10 shadow-glow"
+                      : "border-border hover:border-primary/50"
+                      }`}
                     aria-label={`Select avatar ${avatarOption}`}
                   >
                     {avatarOption}
@@ -185,11 +216,10 @@ const Profile = () => {
                     key={topic}
                     type="button"
                     onClick={() => handleTopicToggle(topic)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                      topics.includes(topic)
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    }`}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${topics.includes(topic)
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                      }`}
                   >
                     {topic}
                   </button>
@@ -216,6 +246,23 @@ const Profile = () => {
               </div>
             </div>
 
+            {/* Badges Section */}
+            {(profile.badges || []).length > 0 && (
+              <div className="pt-4 border-t border-border">
+                <Label className="text-muted-foreground mb-3 block">Your Badges</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(profile.badges || []).map((badge) => (
+                    <div
+                      key={badge}
+                      className="px-3 py-2 bg-primary/10 border border-primary/30 rounded-lg text-sm font-medium hover:scale-105 transition-transform duration-300"
+                    >
+                      🏆 {badge}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Save Button */}
             <Button onClick={handleSave} className="w-full" size="lg" disabled={isSaving}>
               {isSaving ? (
@@ -230,6 +277,56 @@ const Profile = () => {
                 </>
               )}
             </Button>
+
+            {/* Delete Profile */}
+            <div className="pt-4 border-t border-destructive/20">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    size="sm"
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete My Profile
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete your account
+                      and remove all your data from our servers, including:
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Your profile and settings</li>
+                        <li>All quest progress and scores</li>
+                        <li>Earned badges and achievements</li>
+                        <li>Learning analytics and history</li>
+                      </ul>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteProfile}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Yes, delete my profile
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </CardContent>
         </Card>
       </main>

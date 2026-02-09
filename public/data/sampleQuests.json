@@ -1,173 +1,265 @@
 [
   {
     "id": "quest-1",
-    "title": "Array Adventures",
-    "description": "Master the fundamentals of array manipulation and iteration",
-    "difficulty": "beginner",
-    "topic": "javascript",
-    "xpReward": 100,
-    "type": "quiz",
-    "questions": [
-      {
-        "question": "What method adds an element to the end of an array?",
-        "options": ["push()", "pop()", "shift()", "unshift()"],
-        "correctAnswer": 0
-      },
-      {
-        "question": "Which method removes the first element from an array?",
-        "options": ["push()", "pop()", "shift()", "unshift()"],
-        "correctAnswer": 2
-      },
-      {
-        "question": "What does the map() method return?",
-        "options": ["The original array", "A new array", "undefined", "A string"],
-        "correctAnswer": 1
-      }
-    ]
-  },
-  {
-    "id": "quest-2",
-    "title": "Function Fundamentals",
-    "description": "Learn to write clean, reusable functions in JavaScript",
-    "difficulty": "beginner",
-    "topic": "javascript",
-    "xpReward": 150,
-    "type": "code",
-    "challenge": {
-      "prompt": "Write a function called 'greet' that takes a name parameter and returns 'Hello, [name]!'",
-      "starterCode": "function greet(name) {\n  // Your code here\n}",
-      "testCases": [
-        { "input": "Alice", "expected": "Hello, Alice!" },
-        { "input": "Bob", "expected": "Hello, Bob!" }
-      ]
-    }
-  },
-  {
-    "id": "quest-3",
-    "title": "Loop Mastery",
-    "description": "Conquer different types of loops and when to use them",
-    "difficulty": "intermediate",
-    "topic": "javascript",
-    "xpReward": 200,
-    "type": "quiz",
-    "questions": [
-      {
-        "question": "Which loop is best for iterating over object properties?",
-        "options": ["for", "while", "for...in", "forEach"],
-        "correctAnswer": 2
-      },
-      {
-        "question": "What does 'break' do in a loop?",
-        "options": ["Skips current iteration", "Exits the loop", "Restarts the loop", "Does nothing"],
-        "correctAnswer": 1
-      },
-      {
-        "question": "Which loop guarantees at least one execution?",
-        "options": ["for", "while", "do...while", "for...of"],
-        "correctAnswer": 2
-      }
-    ]
-  },
-  {
-    "id": "quest-4",
-    "title": "React Component Challenge",
-    "description": "Build your first functional React component",
-    "difficulty": "intermediate",
-    "topic": "react",
-    "xpReward": 250,
-    "type": "code",
-    "challenge": {
-      "prompt": "Create a Counter component that displays a count and has increment/decrement buttons",
-      "starterCode": "import { useState } from 'react';\n\nfunction Counter() {\n  // Your code here\n}",
-      "testCases": [
-        { "description": "Component renders without errors" },
-        { "description": "Count increments when + button is clicked" }
-      ]
-    }
-  },
-  {
-    "id": "quest-5",
-    "title": "CSS Flexbox Quest",
-    "description": "Master the art of flexible layouts with Flexbox",
-    "difficulty": "beginner",
-    "topic": "css",
-    "xpReward": 120,
-    "type": "quiz",
-    "questions": [
-      {
-        "question": "Which property makes an element a flex container?",
-        "options": ["display: flex", "flex: 1", "flex-direction: row", "justify-content: center"],
-        "correctAnswer": 0
-      },
-      {
-        "question": "What does 'justify-content: space-between' do?",
-        "options": ["Centers items", "Spaces items evenly with gaps", "Distributes space between items", "Aligns items to start"],
-        "correctAnswer": 2
-      },
-      {
-        "question": "Which property controls the main axis direction?",
-        "options": ["align-items", "flex-direction", "flex-wrap", "justify-content"],
-        "correctAnswer": 1
-      }
-    ]
-  },
-  {
-    "id": "quest-6",
-    "title": "Algorithm Adventure: Sorting",
-    "description": "Understand and implement basic sorting algorithms",
-    "difficulty": "advanced",
-    "topic": "algorithms",
-    "xpReward": 300,
-    "type": "code",
-    "challenge": {
-      "prompt": "Implement a bubble sort algorithm that sorts an array in ascending order",
-      "starterCode": "function bubbleSort(arr) {\n  // Your code here\n  return arr;\n}",
-      "testCases": [
-        { "input": [64, 34, 25, 12, 22, 11, 90], "expected": [11, 12, 22, 25, 34, 64, 90] },
-        { "input": [5, 1, 4, 2, 8], "expected": [1, 2, 4, 5, 8] }
-      ]
-    }
-  },
-  {
-    "id": "quest-7",
-    "title": "Python Basics Battle",
-    "description": "Get started with Python syntax and data types",
+    "title": "Python for Data Science Init",
+    "description": "Master the foundational Python concepts essential for data analysis",
     "difficulty": "beginner",
     "topic": "python",
     "xpReward": 100,
     "type": "quiz",
     "questions": [
       {
-        "question": "How do you create a list in Python?",
-        "options": ["list = (1, 2, 3)", "list = [1, 2, 3]", "list = {1, 2, 3}", "list = <1, 2, 3>"],
+        "question": "Which usage of Python is most common in Data Science?",
+        "options": [
+          "Game Development",
+          "Data Analysis & ML",
+          "Mobile Apps",
+          "Embedded Systems"
+        ],
         "correctAnswer": 1
       },
       {
-        "question": "What is the correct way to comment in Python?",
-        "options": ["// comment", "/* comment */", "# comment", "<!-- comment -->"],
-        "correctAnswer": 2
+        "question": "What is the correct way to import the pandas library conventionally?",
+        "options": [
+          "import pandas as pd",
+          "import pd",
+          "from pandas import *",
+          "import pandas as p"
+        ],
+        "correctAnswer": 0
       },
       {
-        "question": "Which keyword is used to define a function?",
-        "options": ["function", "def", "func", "define"],
+        "question": "Which data structure is mutable?",
+        "options": [
+          "Tuple",
+          "List",
+          "String",
+          "Integer"
+        ],
         "correctAnswer": 1
       }
     ]
   },
   {
-    "id": "quest-8",
-    "title": "Data Structures: Stacks",
-    "description": "Implement and understand the stack data structure",
-    "difficulty": "intermediate",
-    "topic": "data-structures",
-    "xpReward": 220,
+    "id": "quest-2",
+    "title": "NumPy Ninja",
+    "description": "Understand arrays and vectorization with NumPy",
+    "difficulty": "beginner",
+    "topic": "numpy",
+    "xpReward": 150,
     "type": "code",
     "challenge": {
-      "prompt": "Implement a Stack class with push, pop, and peek methods",
-      "starterCode": "class Stack {\n  constructor() {\n    this.items = [];\n  }\n  // Add your methods here\n}",
+      "prompt": "Create a function 'create_array' that returns a NumPy array from a given list",
+      "starterCode": "import numpy as np\n\nfunction create_array(py_list) {\n  // Your code here\n  // Note: Hypothetical JS syntax for Python logic in prototype\n}",
       "testCases": [
-        { "description": "push() adds items to stack" },
-        { "description": "pop() removes and returns last item" }
+        {
+          "input": "[1, 2, 3]",
+          "expected": "array([1, 2, 3])"
+        }
+      ]
+    }
+  },
+  {
+    "id": "quest-3",
+    "title": "Pandas Power",
+    "description": "Data manipulation and analysis with Pandas DataFrames",
+    "difficulty": "intermediate",
+    "topic": "pandas",
+    "xpReward": 200,
+    "type": "quiz",
+    "questions": [
+      {
+        "question": "Which method is used to view the first 5 rows of a DataFrame?",
+        "options": [
+          ".tail()",
+          ".view()",
+          ".head()",
+          ".top()"
+        ],
+        "correctAnswer": 2
+      },
+      {
+        "question": "How do you select a single column 'Age' from DataFrame df?",
+        "options": [
+          "df['Age']",
+          "df.select('Age')",
+          "df(Age)",
+          "df.get('Age')"
+        ],
+        "correctAnswer": 0
+      },
+      {
+        "question": "What method generates descriptive statistics?",
+        "options": [
+          ".info()",
+          ".describe()",
+          ".stats()",
+          ".summary()"
+        ],
+        "correctAnswer": 1
+      }
+    ]
+  },
+  {
+    "id": "quest-4",
+    "title": "Data Cleaning Challenge",
+    "description": "Handle missing values and duplicates effectively",
+    "difficulty": "intermediate",
+    "topic": "data-cleaning",
+    "xpReward": 250,
+    "type": "code",
+    "challenge": {
+      "prompt": "Write a function to fill missing values in a list with the mean",
+      "starterCode": "function fill_missing_with_mean(data) {\n  // Your logic here\n}",
+      "testCases": [
+        {
+          "description": "Fills None/null values with average"
+        },
+        {
+          "description": "Returns clean list"
+        }
+      ]
+    }
+  },
+  {
+    "id": "quest-5",
+    "title": "Visualization Voyager",
+    "description": "Principles of data visualization with Matplotlib and Seaborn",
+    "difficulty": "beginner",
+    "topic": "visualization",
+    "xpReward": 120,
+    "type": "quiz",
+    "questions": [
+      {
+        "question": "Which plot is best for showing distribution of a single variable?",
+        "options": [
+          "Scatter Plot",
+          "Histogram",
+          "Line Chart",
+          "Pie Chart"
+        ],
+        "correctAnswer": 1
+      },
+      {
+        "question": "What function creates a scatter plot in Matplotlib?",
+        "options": [
+          "plt.plot()",
+          "plt.bar()",
+          "plt.scatter()",
+          "plt.hist()"
+        ],
+        "correctAnswer": 2
+      },
+      {
+        "question": "Which library is built on top of Matplotlib for statistical graphics?",
+        "options": [
+          "NumPy",
+          "Seaborn",
+          "Scikit-learn",
+          "Flask"
+        ],
+        "correctAnswer": 1
+      }
+    ]
+  },
+  {
+    "id": "quest-6",
+    "title": "Machine Learning Concept Check",
+    "description": "Test your knowledge of core ML concepts",
+    "difficulty": "advanced",
+    "topic": "machine-learning",
+    "xpReward": 300,
+    "type": "quiz",
+    "questions": [
+      {
+        "question": "Linear Regression is an example of which type of learning?",
+        "options": [
+          "Supervised",
+          "Unsupervised",
+          "Reinforcement",
+          "Semi-supervised"
+        ],
+        "correctAnswer": 0
+      },
+      {
+        "question": "What problem does K-Means clustering solve?",
+        "options": [
+          "Classification",
+          "Regression",
+          "Clustering",
+          "Dimensionality Reduction"
+        ],
+        "correctAnswer": 2
+      },
+      {
+        "question": "What is overfitting?",
+        "options": [
+          "Model performs well on training data but poor on test data",
+          "Model performs poor on both",
+          "Model is too huge",
+          "Data is missing"
+        ],
+        "correctAnswer": 0
+      }
+    ]
+  },
+  {
+    "id": "quest-7",
+    "title": "Introduction to SQL for Data",
+    "description": "Querying databases for analysis",
+    "difficulty": "beginner",
+    "topic": "sql",
+    "xpReward": 100,
+    "type": "quiz",
+    "questions": [
+      {
+        "question": "Which keyword retrieves data from a database?",
+        "options": [
+          "GET",
+          "FETCH",
+          "SELECT",
+          "PULL"
+        ],
+        "correctAnswer": 2
+      },
+      {
+        "question": "Which clause filters rows?",
+        "options": [
+          "ORDER BY",
+          "WHERE",
+          "GROUP BY",
+          "LIMIT"
+        ],
+        "correctAnswer": 1
+      },
+      {
+        "question": "Which function counts the number of rows?",
+        "options": [
+          "SUM()",
+          "TOTAL()",
+          "COUNT()",
+          "NUMBER()"
+        ],
+        "correctAnswer": 2
+      }
+    ]
+  },
+  {
+    "id": "quest-8",
+    "title": "Linear Regression Logic",
+    "description": "Understand the math behind the line of best fit",
+    "difficulty": "advanced",
+    "topic": "machine-learning",
+    "xpReward": 250,
+    "type": "code",
+    "challenge": {
+      "prompt": "Implement a simple linear prediction function y = mx + c",
+      "starterCode": "function predict(m, x, c) {\n  // return y\n}",
+      "testCases": [
+        {
+          "input": "m=2, x=3, c=1",
+          "expected": "7"
+        }
       ]
     }
   }

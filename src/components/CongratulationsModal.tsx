@@ -47,12 +47,12 @@ export const CongratulationsModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-gradient-to-br from-primary/10 via-background to-accent/10 border-2 border-primary/30 shadow-2xl overflow-hidden" style={{ filter: 'brightness(1.1)' }}>
+      <DialogContent className="sm:max-w-md bg-gradient-to-br from-primary/10 via-background to-accent/10 border-2 border-primary/30 shadow-lg overflow-hidden">
         <div className="relative">
-          {/* Animated background glow */}
-          <div className="absolute inset-0 bg-gradient-hero opacity-15 animate-pulse-slow pointer-events-none" style={{ filter: 'brightness(1.2)' }} />
-          
-          {/* Confetti/Sparkles animation */}
+          {/* Subtle background */}
+          <div className="absolute inset-0 bg-gradient-hero opacity-5 pointer-events-none" />
+
+          {/* Sparkles animation */}
           <div className="absolute top-4 right-4">
             <Sparkles className="h-8 w-8 text-accent animate-bounce-subtle" style={{ animationDelay: '0s' }} />
           </div>
@@ -64,10 +64,9 @@ export const CongratulationsModal = ({
           </div>
 
           <DialogHeader className="text-center space-y-4 pb-4">
-            {/* Animated Trophy/Avatar */}
+            {/* Trophy/Avatar */}
             <div className="relative mx-auto">
-              <div className="absolute inset-0 bg-gradient-hero rounded-full blur-xl opacity-50 animate-glow-pulse" />
-              <div className="relative bg-gradient-hero p-6 rounded-full w-32 h-32 flex items-center justify-center animate-scale-in shadow-glow">
+              <div className="relative bg-gradient-hero p-6 rounded-full w-32 h-32 flex items-center justify-center animate-scale-in shadow-md">
                 {isPerfectScore ? (
                   <Trophy className="h-16 w-16 text-white animate-bounce-subtle" />
                 ) : (
@@ -100,7 +99,6 @@ export const CongratulationsModal = ({
           {/* XP Earned Section */}
           <div className="text-center space-y-4 py-4 animate-fade-in-up delay-200">
             <div className="bg-gradient-xp text-white px-4 sm:px-6 py-3 sm:py-4 rounded-xl shadow-md relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
               <div className="relative">
                 <p className="text-xs sm:text-sm opacity-90 mb-1">XP Earned</p>
                 <p className="text-3xl sm:text-4xl font-bold">+{xpEarned}</p>
@@ -110,8 +108,8 @@ export const CongratulationsModal = ({
 
           {/* Motivational Quote */}
           <div className="text-center space-y-4 py-4 animate-fade-in-up delay-300">
-            <div className="relative bg-card/60 backdrop-blur-sm border border-primary/30 rounded-xl p-4" style={{ filter: 'brightness(1.15)' }}>
-              <Sparkles className="h-5 w-5 text-primary absolute top-2 left-2 opacity-60" />
+            <div className="relative bg-card/60 backdrop-blur-sm border border-primary/30 rounded-xl p-4">
+              <Sparkles className="h-5 w-5 text-primary absolute top-2 left-2 opacity-40" />
               <p className="text-sm italic text-foreground px-4 py-2 font-medium">
                 "{quote}"
               </p>
