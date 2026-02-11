@@ -10,8 +10,12 @@ interface MLLearningPathMapProps {
 
 export const MLLearningPathMap = ({ progress, onSelectModule }: MLLearningPathMapProps) => {
   const isModuleUnlocked = (moduleId: number) => {
-    const module = mlModules.find(m => m.id === moduleId);
-    return module ? progress.totalXP >= module.xpRequired : false;
+    // Module 1 is always unlocked
+    if (moduleId === 1) return true;
+
+    // Other modules unlock when the previous module's boss is defeated
+    const previousModuleId = moduleId - 1;
+    return progress.completedBossFights.includes(previousModuleId);
   };
 
   const isModuleCompleted = (moduleId: number) => {
@@ -31,8 +35,8 @@ export const MLLearningPathMap = ({ progress, onSelectModule }: MLLearningPathMa
         <motion.div
           className="w-full bg-gradient-to-b from-violet-500 via-pink-500 to-rose-500 rounded-full"
           initial={{ height: 0 }}
-          animate={{ 
-            height: `${Math.min(((progress.completedModules.length) / mlModules.length) * 100, 100)}%` 
+          animate={{
+            height: `${Math.min(((progress.completedModules.length) / mlModules.length) * 100, 100)}%`
           }}
           transition={{ duration: 1, ease: "easeOut" }}
         />
@@ -93,8 +97,8 @@ export const MLLearningPathMap = ({ progress, onSelectModule }: MLLearningPathMa
                 className={cn(
                   "w-64 p-4 rounded-xl border transition-all duration-300",
                   isLeft ? "ml-auto mr-[calc(50%+60px)]" : "mr-auto ml-[calc(50%+60px)]",
-                  status === 'locked' 
-                    ? "bg-muted/50 border-border opacity-60" 
+                  status === 'locked'
+                    ? "bg-muted/50 border-border opacity-60"
                     : "bg-card border-border hover:border-violet-500/50 cursor-pointer hover:shadow-lg"
                 )}
                 onClick={() => status !== 'locked' && onSelectModule(module.id)}
@@ -113,14 +117,14 @@ export const MLLearningPathMap = ({ progress, onSelectModule }: MLLearningPathMa
                     <span className="text-xs text-violet-500 animate-pulse">Current</span>
                   )}
                 </div>
-                
+
                 <h3 className={cn(
                   "font-bold text-lg mb-1",
                   status === 'locked' ? "text-muted-foreground" : "text-foreground"
                 )}>
                   {module.title}
                 </h3>
-                
+
                 <p className="text-sm text-muted-foreground mb-2">
                   {module.subtitle}
                 </p>
@@ -146,7 +150,7 @@ export const MLLearningPathMap = ({ progress, onSelectModule }: MLLearningPathMa
 
                 {status === 'locked' && (
                   <p className="text-xs text-muted-foreground">
-                    Requires {module.xpRequired} XP to unlock
+                    Complete Level {module.id - 1} to unlock
                   </p>
                 )}
               </motion.div>

@@ -20,6 +20,8 @@ import Profile from "./pages/Profile";
 import Courses from "./pages/Courses";
 import PythonCourse from "./pages/PythonCourse";
 import MachineLearningCourse from "./pages/MachineLearningCourse";
+import DataVisualizationCourse from "./pages/DataVisualizationCourse";
+import SQLCourse from "./pages/SQLCourse";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -49,9 +51,9 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/courses" element={<Courses />} />
               <Route path="/courses/python" element={<PythonCourse />} />
-              <Route path="/courses/data-visualization" element={<ComingSoon />} />
+              <Route path="/courses/data-visualization" element={<DataVisualizationCourse />} />
               <Route path="/courses/machine-learning" element={<MachineLearningCourse />} />
-              <Route path="/courses/sql" element={<ComingSoon />} />
+              <Route path="/courses/sql" element={<SQLCourse />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

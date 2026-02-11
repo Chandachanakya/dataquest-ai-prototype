@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,12 @@ import {
   CheckCircle2,
   Play
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { loadAllCourseProgress, calculateProgressPercentage } from "@/lib/courseProgressUtils";
+import { pythonModules } from "@/lib/pythonCourseData";
+import { sqlModules } from "@/lib/sqlCourseData";
+import { mlModules } from "@/lib/mlCourseData";
+import { visualizationModules } from "@/lib/visualizationCourseData";
 
 interface Course {
   id: string;
@@ -30,15 +36,15 @@ interface Course {
   color: string;
 }
 
-const courses: Course[] = [
+// Course metadata (static information)
+const coursesMetadata: Omit<Course, 'completedLevels'>[] = [
   {
     id: 'python',
     title: 'Python for Data Science',
     description: 'Master Python fundamentals, data structures, and libraries like NumPy and Pandas for data manipulation.',
     icon: <Code2 className="h-8 w-8" />,
     difficulty: 'beginner',
-    levels: 12,
-    completedLevels: 5,
+    levels: pythonModules.length,
     duration: '8 hours',
     topics: ['Variables & Types', 'Data Structures', 'Functions', 'NumPy', 'Pandas', 'Data Cleaning'],
     color: 'from-primary to-primary/60'
@@ -49,8 +55,7 @@ const courses: Course[] = [
     description: 'Learn supervised and unsupervised learning algorithms, model evaluation, and practical ML applications.',
     icon: <Brain className="h-8 w-8" />,
     difficulty: 'intermediate',
-    levels: 15,
-    completedLevels: 3,
+    levels: mlModules.length,
     duration: '12 hours',
     topics: ['Linear Regression', 'Classification', 'Clustering', 'Neural Networks', 'Model Evaluation', 'Feature Engineering'],
     color: 'from-accent to-accent/60'
@@ -61,8 +66,7 @@ const courses: Course[] = [
     description: 'Create compelling visualizations with Matplotlib, Seaborn, and modern interactive charting libraries.',
     icon: <BarChart3 className="h-8 w-8" />,
     difficulty: 'beginner',
-    levels: 10,
-    completedLevels: 8,
+    levels: visualizationModules.length,
     duration: '6 hours',
     topics: ['Matplotlib', 'Seaborn', 'Plotly', 'Chart Types', 'Storytelling', 'Dashboards'],
     color: 'from-success to-success/60'
@@ -73,8 +77,7 @@ const courses: Course[] = [
     description: 'Query databases effectively, understand relational models, and optimize your data retrieval skills.',
     icon: <Database className="h-8 w-8" />,
     difficulty: 'intermediate',
-    levels: 14,
-    completedLevels: 0,
+    levels: sqlModules.length,
     duration: '10 hours',
     topics: ['SELECT Queries', 'JOINs', 'Aggregations', 'Subqueries', 'Indexing', 'Query Optimization'],
     color: 'from-yellow-500 to-yellow-500/60'
@@ -89,10 +92,43 @@ const difficultyConfig = {
 
 const Courses = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [hoveredCourse, setHoveredCourse] = useState<string | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load progress from storage
+  useEffect(() => {
+    const loadProgress = async () => {
+      setIsLoading(true);
+      try {
+        const progressData = await loadAllCourseProgress(user?.id);
+
+        // Combine metadata with actual progress
+        const coursesWithProgress: Course[] = coursesMetadata.map(meta => ({
+          ...meta,
+          completedLevels: progressData[meta.id as keyof typeof progressData]?.completedModules || 0
+        }));
+
+        setCourses(coursesWithProgress);
+      } catch (error) {
+        console.error("Error loading course progress:", error);
+        // Fallback to 0 progress if error
+        const coursesWithProgress: Course[] = coursesMetadata.map(meta => ({
+          ...meta,
+          completedLevels: 0
+        }));
+        setCourses(coursesWithProgress);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProgress();
+  }, [user]);
 
   const getProgressPercentage = (completed: number, total: number) => {
-    return Math.round((completed / total) * 100);
+    return calculateProgressPercentage(completed, total);
   };
 
   const handleCourseClick = (courseId: string) => {
@@ -144,24 +180,35 @@ const Courses = () => {
         </div>
 
         {/* Stats Section */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 animate-fade-in-up delay-100">
-          <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
-            <p className="text-2xl sm:text-3xl font-bold text-primary">51</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">Total Levels</p>
-          </Card>
-          <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
-            <p className="text-2xl sm:text-3xl font-bold text-success">16</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">Completed</p>
-          </Card>
-          <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
-            <p className="text-2xl sm:text-3xl font-bold text-accent">36h</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">Total Duration</p>
-          </Card>
-          <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
-            <p className="text-2xl sm:text-3xl font-bold text-foreground">31%</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">Overall Progress</p>
-          </Card>
-        </div>
+        {!isLoading && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 animate-fade-in-up delay-100">
+            <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
+              <p className="text-2xl sm:text-3xl font-bold text-primary">
+                {courses.reduce((sum, course) => sum + course.levels, 0)}
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Total Levels</p>
+            </Card>
+            <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
+              <p className="text-2xl sm:text-3xl font-bold text-success">
+                {courses.reduce((sum, course) => sum + course.completedLevels, 0)}
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Completed</p>
+            </Card>
+            <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
+              <p className="text-2xl sm:text-3xl font-bold text-accent">36h</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Total Duration</p>
+            </Card>
+            <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
+              <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                {getProgressPercentage(
+                  courses.reduce((sum, course) => sum + course.completedLevels, 0),
+                  courses.reduce((sum, course) => sum + course.levels, 0)
+                )}%
+              </p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Overall Progress</p>
+            </Card>
+          </div>
+        )}
 
         {/* Course Grid */}
         <div className="grid md:grid-cols-2 gap-6">

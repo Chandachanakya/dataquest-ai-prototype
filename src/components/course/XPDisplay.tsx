@@ -2,16 +2,27 @@ import { motion } from "framer-motion";
 import { Zap, Star, Trophy } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { pythonModules, CourseProgress } from "@/lib/pythonCourseData";
+import { Module } from "@/lib/pythonCourseData";
+
+// Generic CourseProgress interface that works with all courses
+interface CourseProgress {
+  currentLevel: number;
+  totalXP: number;
+  completedModules: number[];
+  completedChallenges: string[];
+  completedBossFights: number[];
+  completedVideos?: number[]; // Optional for courses that don't track videos
+}
 
 interface XPDisplayProps {
   progress: CourseProgress;
+  modules: Module[]; // Accept modules array as prop
 }
 
-export const XPDisplay = ({ progress }: XPDisplayProps) => {
-  const currentModuleIndex = Math.min(progress.currentLevel - 1, pythonModules.length - 1);
-  const currentModule = pythonModules[currentModuleIndex];
-  const nextModule = pythonModules[currentModuleIndex + 1];
+export const XPDisplay = ({ progress, modules }: XPDisplayProps) => {
+  const currentModuleIndex = Math.min(progress.currentLevel - 1, modules.length - 1);
+  const currentModule = modules[currentModuleIndex];
+  const nextModule = modules[currentModuleIndex + 1];
 
   const xpForCurrentLevel = currentModule?.xpRequired || 0;
   const xpForNextLevel = nextModule?.xpRequired || progress.totalXP;

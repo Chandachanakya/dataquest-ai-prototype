@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
-import { ArrowLeft, MessageSquare, ThumbsUp, Send, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, MessageSquare, ThumbsUp, Send, Plus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -37,6 +37,8 @@ const Forum = () => {
   const [replyContent, setReplyContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
+  const [deletePostId, setDeletePostId] = useState<string | null>(null);
+  const [deleteReplyId, setDeleteReplyId] = useState<string | null>(null);
 
   useEffect(() => {
     loadPosts();
@@ -81,7 +83,7 @@ const Forum = () => {
     }
     setLoading(false);
   };
-  
+
   const loadPostDetails = async (postId: string) => {
     const { data: postData, error } = await supabase
       .from('forum_posts')
@@ -180,6 +182,68 @@ const Forum = () => {
     }
   };
 
+  const handleDeletePost = async () => {
+    if (!deletePostId || !user) return;
+
+    const post = posts.find(p => p.id === deletePostId);
+
+    // Verify ownership
+    if (!post || post.user_id !== user.id) {
+      toast.error("You can only delete your own posts");
+      setDeletePostId(null);
+      return;
+    }
+
+    // Delete from database
+    const { error } = await supabase
+      .from('forum_posts')
+      .delete()
+      .eq('id', deletePostId);
+
+    if (error) {
+      toast.error("Failed to delete post");
+      console.error(error);
+    } else {
+      toast.success("Post deleted successfully");
+      // Clear selected post if it was the deleted one
+      if (selectedPost?.id === deletePostId) {
+        setSelectedPost(null);
+      }
+    }
+
+    setDeletePostId(null);
+  };
+
+  const handleDeleteReply = async () => {
+    if (!deleteReplyId || !user || !selectedPost) return;
+
+    const reply = selectedPost.replies.find(r => r.id === deleteReplyId);
+
+    // Verify ownership
+    if (!reply || reply.user_id !== user.id) {
+      toast.error("You can only delete your own replies");
+      setDeleteReplyId(null);
+      return;
+    }
+
+    // Delete from database
+    const { error } = await supabase
+      .from('forum_replies')
+      .delete()
+      .eq('id', deleteReplyId);
+
+    if (error) {
+      toast.error("Failed to delete reply");
+      console.error(error);
+    } else {
+      toast.success("Reply deleted successfully");
+      // Reload post details to refresh replies
+      loadPostDetails(selectedPost.id);
+    }
+
+    setDeleteReplyId(null);
+  };
+
   if (authLoading || profileLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -259,8 +323,8 @@ const Forum = () => {
                         <p className="text-red-500 text-xs mt-1">Content must be longer than 10 characters.</p>
                       )}
                     </div>
-                    <Button 
-                      onClick={handleCreatePost} 
+                    <Button
+                      onClick={handleCreatePost}
                       className="w-full"
                       disabled={newPostTitle.trim().length <= 5 || newPostContent.trim().length <= 10 || isCreatingPost}
                     >
@@ -315,11 +379,26 @@ const Forum = () => {
                           </p>
                         </div>
                       </div>
-                      <Badge
-                        className={topicColors[post.topic] || "bg-muted"}
-                      >
-                        {post.topic}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          className={topicColors[post.topic] || "bg-muted"}
+                        >
+                          {post.topic}
+                        </Badge>
+                        {user && post.user_id === user.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletePostId(post.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -403,6 +482,16 @@ const Forum = () => {
                                   ).toLocaleDateString()}
                                 </p>
                               </div>
+                              {user && reply.user_id === user.id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => setDeleteReplyId(reply.id)}
+                                >
+                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                              )}
                             </div>
                             <p className="text-sm">{reply.content}</p>
                           </div>
@@ -439,6 +528,46 @@ const Forum = () => {
           </div>
         )}
       </main>
+
+      {/* Delete Post Confirmation Dialog */}
+      <Dialog open={!!deletePostId} onOpenChange={() => setDeletePostId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Post?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your post and all its replies.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setDeletePostId(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeletePost}>
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Reply Confirmation Dialog */}
+      <Dialog open={!!deleteReplyId} onOpenChange={() => setDeleteReplyId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Reply?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your reply.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setDeleteReplyId(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteReply}>
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

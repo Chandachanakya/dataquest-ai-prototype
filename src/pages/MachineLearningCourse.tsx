@@ -141,7 +141,7 @@ const MachineLearningCourse = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <XPDisplay progress={progress} />
+          <XPDisplay progress={progress} modules={mlModules} />
         </motion.div>
 
         {/* Quick Stats */}

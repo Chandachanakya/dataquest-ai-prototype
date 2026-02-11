@@ -389,6 +389,7 @@ export interface CourseProgress {
   completedModules: number[];
   completedChallenges: string[];
   completedBossFights: number[];
+  completedVideos?: number[]; // Optional for courses that don't track videos
 }
 
 export const getInitialProgress = (): CourseProgress => ({

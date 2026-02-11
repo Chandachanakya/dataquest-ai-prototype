@@ -3,10 +3,10 @@ import { motion } from "framer-motion";
 import { ArrowLeft, BookOpen, Zap, Sword, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Module, CourseProgress } from "@/lib/mlCourseData";
+import { Module, CourseProgress, mlModules } from "@/lib/mlCourseData";
 import { ModuleLesson } from "./ModuleLesson";
-import { MLKnowledgeCheck } from "./MLKnowledgeCheck";
-import { MLBossFight } from "./MLBossFight";
+import { KnowledgeCheck } from "./KnowledgeCheck";
+import { BossFight } from "./BossFight";
 import { XPDisplay } from "./XPDisplay";
 import { cn } from "@/lib/utils";
 
@@ -18,12 +18,12 @@ interface MLModulePageProps {
   onBossComplete: (moduleId: number, xp: number) => void;
 }
 
-export const MLModulePage = ({ 
-  module, 
-  progress, 
-  onBack, 
-  onChallengeComplete, 
-  onBossComplete 
+export const MLModulePage = ({
+  module,
+  progress,
+  onBack,
+  onChallengeComplete,
+  onBossComplete
 }: MLModulePageProps) => {
   const [activeTab, setActiveTab] = useState("lesson");
   const isBossCompleted = progress.completedBossFights.includes(module.id);
@@ -74,10 +74,10 @@ export const MLModulePage = ({
               </div>
             </div>
           </div>
-          
+
           {/* XP Display */}
           <div className="mt-4">
-            <XPDisplay progress={progress} />
+            <XPDisplay progress={progress} modules={mlModules} />
           </div>
         </div>
       </div>
@@ -125,14 +125,14 @@ export const MLModulePage = ({
             </TabsList>
 
             <TabsContent value="lesson" className="mt-6">
-              <ModuleLesson 
-                module={module} 
+              <ModuleLesson
+                module={module}
                 onComplete={handleLessonComplete}
               />
             </TabsContent>
 
             <TabsContent value="challenge" className="mt-6">
-              <MLKnowledgeCheck
+              <KnowledgeCheck
                 module={module}
                 completedChallenges={progress.completedChallenges}
                 onChallengeComplete={onChallengeComplete}
@@ -141,7 +141,7 @@ export const MLModulePage = ({
             </TabsContent>
 
             <TabsContent value="boss" className="mt-6">
-              <MLBossFight
+              <BossFight
                 module={module}
                 isCompleted={isBossCompleted}
                 onComplete={handleBossComplete}

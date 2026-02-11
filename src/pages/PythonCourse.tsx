@@ -236,7 +236,7 @@ const PythonCourse = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <XPDisplay progress={progress} />
+          <XPDisplay progress={progress} modules={pythonModules} />
         </motion.div>
 
         {/* Quick Stats */}

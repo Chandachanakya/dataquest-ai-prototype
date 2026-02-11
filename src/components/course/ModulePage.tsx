@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, BookOpen, Zap, Sword, Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Module, CourseProgress } from "@/lib/pythonCourseData";
+import { Module, CourseProgress, pythonModules } from "@/lib/pythonCourseData";
 import { ModuleLesson } from "./ModuleLesson";
 import { KnowledgeCheck } from "./KnowledgeCheck";
 import { BossFight } from "./BossFight";
@@ -80,7 +80,7 @@ export const ModulePage = ({
 
           {/* XP Display */}
           <div className="mt-4">
-            <XPDisplay progress={progress} />
+            <XPDisplay progress={progress} modules={pythonModules} />
           </div>
         </div>
       </div>
