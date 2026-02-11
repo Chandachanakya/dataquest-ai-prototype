@@ -19,11 +19,12 @@ import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { checkAndActOnLearnerState, getRecommendationsForUser, getDropRiskAnalysis, getOptimalLearningPath, getRecommendedDifficulty, type LearnerState, type QuestRecommendation, type DropRiskAnalysis, type QuestSequence, type DifficultyRecommendation } from "@/lib/learnerEngine";
+import { checkAndActOnLearnerState, getRecommendationsForUser, getDropRiskAnalysis, getOptimalLearningPath, getRecommendedDifficulty, type LearnerState, type QuestRecommendation, type DropRiskAnalysis, type QuestSequence, type DifficultyRecommendation, type StateResult } from "@/lib/learnerEngine";
 import { confettiManager } from "@/lib/confetti";
 import { hapticManager } from "@/lib/haptics";
 import { SmartRecommendationsCard, DropRiskCard } from "@/components/Phase1Cards";
 import { LearningPathCard, AdaptiveDifficultyCard } from "@/components/Phase2Cards";
+import { AIStateViz } from "@/components/AIStateViz";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ const Dashboard = () => {
   const [completedQuestIds, setCompletedQuestIds] = useState<string[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [insights, setInsights] = useState<string[]>([]);
-  const [learnerState, setLearnerState] = useState<LearnerState | null>(null);
+  const [learnerStateResult, setLearnerStateResult] = useState<StateResult | null>(null);
   const [questsLoading, setQuestsLoading] = useState(true);
   // Phase 1: Smart Recommendations
   const [smartRecommendations, setSmartRecommendations] = useState<QuestRecommendation[]>([]);
@@ -73,7 +74,7 @@ const Dashboard = () => {
         if (profile) {
           try {
             const stateResult = await checkAndActOnLearnerState(user.id);
-            setLearnerState(stateResult.state);
+            setLearnerStateResult(stateResult);
 
             // Generate insights based on learner state
             const stateInsights: string[] = [];
@@ -461,30 +462,41 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* AI Insights */}
-          {insights.length > 0 && (
-            <Card className="bg-primary/5 border-primary/20 animate-fade-in-up delay-200 hover:shadow-md transition-shadow duration-300">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <span className="text-2xl animate-bounce-subtle" aria-hidden="true">🤖</span>
-                  AI Insights
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {insights.map((insight, index) => (
-                    <li
-                      key={index}
-                      className="text-sm animate-fade-in-up"
-                      style={{ animationDelay: `${300 + index * 100}ms` }}
-                    >
-                      • {insight}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
+          {/* AI Analysis Section */}
+          <div className="grid md:grid-cols-2 gap-6 animate-fade-in-up delay-200">
+            {learnerStateResult && (
+              <AIStateViz
+                distribution={learnerStateResult.distribution}
+                confidence={learnerStateResult.confidenceScore}
+                primaryState={learnerStateResult.state}
+              />
+            )}
+
+            {/* AI Insights */}
+            {insights.length > 0 && (
+              <Card className="bg-primary/5 border-primary/20 h-full hover:shadow-md transition-shadow duration-300">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <span className="text-2xl animate-bounce-subtle" aria-hidden="true">🤖</span>
+                    AI Insights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {insights.map((insight, index) => (
+                      <li
+                        key={index}
+                        className="text-sm flex items-start gap-2"
+                      >
+                        <span className="text-primary mt-0.5">•</span>
+                        <span>{insight.substring(2)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
           {/* PHASE 1: Smart Recommendations */}
           <SmartRecommendationsCard

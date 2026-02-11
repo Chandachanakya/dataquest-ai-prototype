@@ -23,20 +23,26 @@ import { getOptimalQuestSequence, getAdaptiveDifficultyLevel, selectBestInterven
 
 export type LearnerState = 'STRUGGLING' | 'FAST' | 'CONSISTENT' | 'DROP_RISK';
 
-interface LearnerMetrics {
+export interface LearnerMetrics {
     avgScore: number;
-    normalizedAvgScore: number; // NEW: Normalized by difficulty
+    normalizedAvgScore: number; // Normalized by difficulty
     totalAttempts: number;
     avgCompletionTime: number;
     lastActiveDate: Date | null;
     recentXP: number;
+    retryRatio: number;      // attempts / completions (Persistence)
+    scoreVariance: number;   // Variance of recent scores (Consistency)
+    completionRate: number;  // completions / starts
 }
 
-interface StateResult {
-    state: LearnerState;
+export type StateDistribution = Record<LearnerState, number>;
+
+export interface StateResult {
+    state: LearnerState; // The primary state (highest probability)
     reason: string;
     metrics: LearnerMetrics;
-    confidenceScore: number; // NEW: Decision confidence
+    confidenceScore: number; // Decision confidence
+    distribution: StateDistribution; // NEW: Full probability distribution
 }
 
 /**
@@ -45,19 +51,22 @@ interface StateResult {
  * METRIC NORMALIZATION (Phase 0):
  * - Scores are normalized by quest difficulty to ensure fair comparison
  * - Difficulty multipliers: Beginner=0.8, Intermediate=1.0, Advanced=1.2
- * - This prevents penalizing learners who attempt harder quests
+ * 
+ * BEHAVIORAL FEATURES (Phase 1):
+ * - retryRatio: Indicates persistence (higher is more retries)
+ * - scoreVariance: Indicates consistency (lower is more consistent)
+ * - completionRate: Indicates follow-through
  */
 async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Get all completed attempts in last 30 days
+    // Get ALL attempts in last 30 days (completed or not)
     const { data: attempts, error } = await supabase
         .from('quest_attempts')
         .select('*')
         .eq('user_id', userId)
-        .eq('status', 'completed')
-        .gte('completed_at', thirtyDaysAgo.toISOString());
+        .gte('started_at', thirtyDaysAgo.toISOString());
 
     if (error) {
         console.error('Error fetching attempts:', error);
@@ -67,7 +76,10 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
             totalAttempts: 0,
             avgCompletionTime: 0,
             lastActiveDate: null,
-            recentXP: 0
+            recentXP: 0,
+            retryRatio: 0,
+            scoreVariance: 0,
+            completionRate: 0
         };
     }
 
@@ -80,9 +92,16 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
             totalAttempts: 0,
             avgCompletionTime: 0,
             lastActiveDate: null,
-            recentXP: 0
+            recentXP: 0,
+            retryRatio: 0,
+            scoreVariance: 0,
+            completionRate: 0
         };
     }
+
+    // Filter for completed attempts for score calculations
+    const completedAttempts = attempts.filter(a => a.status === 'completed');
+    const successfulCompletions = completedAttempts.length;
 
     // Fetch quest details separately for difficulty normalization
     const questIds = [...new Set(attempts.map(a => a.quest_id))];
@@ -102,22 +121,28 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
         'advanced': 1.2
     };
 
-    // Calculate raw and normalized scores
-    const avgScore = attempts.reduce((sum, a) => sum + (a.score || 0), 0) / totalAttempts;
+    // Calculate raw and normalized scores (only for completed attempts)
+    const avgScore = successfulCompletions > 0
+        ? completedAttempts.reduce((sum, a) => sum + (a.score || 0), 0) / successfulCompletions
+        : 0;
 
-    const normalizedScores = attempts.map(a => {
+    const normalizedScores = completedAttempts.map(a => {
         const difficulty = questDifficultyMap.get(a.quest_id) || 'intermediate';
         const multiplier = difficultyMultipliers[difficulty] || 1.0;
         return (a.score || 0) * multiplier;
     });
-    const normalizedAvgScore = normalizedScores.reduce((sum, s) => sum + s, 0) / totalAttempts;
+    const normalizedAvgScore = successfulCompletions > 0
+        ? normalizedScores.reduce((sum, s) => sum + s, 0) / successfulCompletions
+        : 0;
 
-    const avgCompletionTime = attempts
-        .filter(a => a.completion_time)
-        .reduce((sum, a) => sum + (a.completion_time || 0), 0) / totalAttempts;
+    const avgCompletionTime = successfulCompletions > 0
+        ? completedAttempts
+            .filter(a => a.completion_time)
+            .reduce((sum, a) => sum + (a.completion_time || 0), 0) / successfulCompletions
+        : 0;
 
     const lastActiveDate = attempts.length > 0
-        ? new Date(Math.max(...attempts.map(a => new Date(a.completed_at).getTime())))
+        ? new Date(Math.max(...attempts.map(a => new Date(a.started_at).getTime())))
         : null;
 
     // Get recent XP from user_progress
@@ -127,13 +152,34 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
         .eq('id', userId)
         .single();
 
+    // --- BEHAVIORAL FEATURES CALCULATION ---
+
+    // Retry Ratio: Total attempts / Successful completions
+    const retryRatio = successfulCompletions > 0 ? totalAttempts / successfulCompletions : totalAttempts;
+
+    // Completion Rate: Successful completions / Total starts
+    const completionRate = totalAttempts > 0 ? successfulCompletions / totalAttempts : 0;
+
+    // Score Variance: sum((x - mean)^2) / n
+    let scoreVariance = 0;
+    if (successfulCompletions > 1) {
+        const varianceSum = completedAttempts.reduce((sum, a) => {
+            const diff = (a.score || 0) - avgScore;
+            return sum + (diff * diff);
+        }, 0);
+        scoreVariance = varianceSum / successfulCompletions;
+    }
+
     return {
         avgScore,
         normalizedAvgScore,
         totalAttempts,
         avgCompletionTime,
         lastActiveDate,
-        recentXP: profile?.xp || 0
+        recentXP: profile?.xp || 0,
+        retryRatio,
+        scoreVariance,
+        completionRate
     };
 }
 
@@ -164,64 +210,107 @@ function calculateConfidence(totalAttempts: number, daysSinceActive: number): nu
 }
 
 /**
- * Determine learner state based on metrics
- * Priority: DROP_RISK > STRUGGLING > FAST > CONSISTENT
+ * Determine learner state based on metrics using Probabilistic Modeling (Phase 2)
  * 
- * NOW USES NORMALIZED SCORES (Phase 0) for fairer assessment
+ * Instead of hard thresholds, we calculate a score for each state and normalize
+ * them into a probability distribution. This provides "Uncertainty Modeling".
  */
 export async function determineLearnerState(userId: string): Promise<StateResult> {
     const metrics = await calculateMetrics(userId);
 
-    // Thresholds (configurable)
-    const DROP_RISK_DAYS = 7;
-    const STRUGGLING_SCORE = 50;
-    const STRUGGLING_MIN_ATTEMPTS = 3;
-    const FAST_SCORE = 80;
-    const FAST_MIN_XP = 200;
+    // 1. Calculate Raw Scores for each state
+    const scores: Record<LearnerState, number> = {
+        'STRUGGLING': 0,
+        'FAST': 0,
+        'CONSISTENT': 0,
+        'DROP_RISK': 0
+    };
 
     const daysSinceActive = metrics.lastActiveDate
         ? (Date.now() - metrics.lastActiveDate.getTime()) / (1000 * 60 * 60 * 24)
-        : 999;
+        : 30; // Default to 30 if null
 
-    // Calculate confidence score
-    const confidenceScore = calculateConfidence(metrics.totalAttempts, daysSinceActive);
-
-    // Priority 1: Drop Risk
-    if (daysSinceActive > DROP_RISK_DAYS) {
-        return {
-            state: 'DROP_RISK',
-            reason: `User inactive for ${Math.round(daysSinceActive)} days`,
-            metrics,
-            confidenceScore
-        };
+    // STRUGGLING Score
+    // High if low score, high retry ratio, low completion rate
+    // Range approx 0-3
+    if (metrics.totalAttempts > 0) {
+        const scoreFactor = Math.max(0, (60 - metrics.normalizedAvgScore) / 20); // 0 at 60, 2 at 20
+        const retryFactor = Math.max(0, metrics.retryRatio - 1.2); // Bonus if repeats often
+        scores['STRUGGLING'] = scoreFactor + retryFactor;
     }
 
-    // Priority 2: Struggling (NOW USES NORMALIZED SCORE)
-    if (metrics.normalizedAvgScore < STRUGGLING_SCORE && metrics.totalAttempts >= STRUGGLING_MIN_ATTEMPTS) {
-        return {
-            state: 'STRUGGLING',
-            reason: `Low normalized score (${metrics.normalizedAvgScore.toFixed(1)}%) over ${metrics.totalAttempts} attempts`,
-            metrics,
-            confidenceScore
-        };
+    // FAST Score
+    // High if high score, fast completion, high recent XP
+    // Range approx 0-3
+    if (metrics.totalAttempts > 0) {
+        const scoreFactor = Math.max(0, (metrics.normalizedAvgScore - 75) / 10); // 0 at 75, 2.5 at 100
+        const xpFactor = metrics.recentXP > 200 ? 1 : 0;
+        scores['FAST'] = scoreFactor + xpFactor;
     }
 
-    // Priority 3: Fast (NOW USES NORMALIZED SCORE)
-    if (metrics.normalizedAvgScore > FAST_SCORE && metrics.recentXP > FAST_MIN_XP) {
-        return {
-            state: 'FAST',
-            reason: `High normalized score (${metrics.normalizedAvgScore.toFixed(1)}%) with ${metrics.recentXP} XP`,
-            metrics,
-            confidenceScore
-        };
+    // DROP_RISK Score
+    // High if inactive for days
+    // Range approx 0-3
+    scores['DROP_RISK'] = Math.min(3, Math.max(0, (daysSinceActive - 3) / 2)); // 0 at 3 days, 1 at 5 days, 3 at 9+ days
+
+    // CONSISTENT Score
+    // Baseline score + consistency bonus (low variance)
+    // Range approx 0-3
+    const varianceBonus = Math.max(0, 2 - (metrics.scoreVariance / 100)); // Higher bonus for low variance
+    scores['CONSISTENT'] = 0.5 + varianceBonus + (metrics.completionRate * 1.5);
+
+    // 2. Normalize to Probability Distribution
+    const totalScore = Object.values(scores).reduce((a, b) => a + b, 0) || 1;
+    const distribution: StateDistribution = {
+        'STRUGGLING': scores['STRUGGLING'] / totalScore,
+        'FAST': scores['FAST'] / totalScore,
+        'CONSISTENT': scores['CONSISTENT'] / totalScore,
+        'DROP_RISK': scores['DROP_RISK'] / totalScore
+    };
+
+    // 3. Determine Primary State and Confidence
+    let primaryState: LearnerState = 'CONSISTENT';
+    let maxProb = -1;
+    let secondMaxProb = -1;
+
+    for (const [state, prob] of Object.entries(distribution) as [LearnerState, number][]) {
+        if (prob > maxProb) {
+            secondMaxProb = maxProb;
+            maxProb = prob;
+            primaryState = state;
+        } else if (prob > secondMaxProb) {
+            secondMaxProb = prob;
+        }
     }
 
-    // Default: Consistent
+    // Confidence is the margin between 1st and 2nd choice (or just maxProb if dominant)
+    // Scaled to 0-1 range where >0.2 is decent confidence
+    const margin = maxProb - secondMaxProb;
+    const confidenceScore = Math.min(1.0, margin * 2 + 0.2);
+
+    // Generate reason based on primary state contributors
+    let reason = '';
+    switch (primaryState) {
+        case 'STRUGGLING':
+            reason = `High struggle probability (${(distribution.STRUGGLING * 100).toFixed(0)}%). Low scores or high retries detected.`;
+            break;
+        case 'FAST':
+            reason = `Identified as fast learner (${(distribution.FAST * 100).toFixed(0)}%). High efficiency and scores.`;
+            break;
+        case 'DROP_RISK':
+            reason = `High churn risk (${(distribution.DROP_RISK * 100).toFixed(0)}%). Inactive for ${Math.round(daysSinceActive)} days.`;
+            break;
+        case 'CONSISTENT':
+            reason = `Steady progress detected (${(distribution.CONSISTENT * 100).toFixed(0)}%). Consistent performance.`;
+            break;
+    }
+
     return {
-        state: 'CONSISTENT',
-        reason: 'Steady progress with no risk indicators',
+        state: primaryState,
+        reason,
         metrics,
-        confidenceScore
+        confidenceScore,
+        distribution
     };
 }
 
@@ -252,7 +341,16 @@ async function logDecision(
  * Trigger personalized action based on learner state
  */
 export async function triggerPersonalization(userId: string, stateResult: StateResult) {
-    const { state, reason, metrics } = stateResult;
+    const { state, reason, metrics, distribution } = stateResult;
+
+    // We pass the distribution into metadata for logging
+    const metadata = {
+        metrics,
+        distribution,
+        topTwoStates: Object.entries(distribution)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 2)
+    };
 
     switch (state) {
         case 'STRUGGLING':
@@ -263,7 +361,7 @@ export async function triggerPersonalization(userId: string, stateResult: StateR
                 'RECOMMEND_REVISION',
                 reason,
                 stateResult.confidenceScore,
-                { avgScore: metrics.avgScore, totalAttempts: metrics.totalAttempts }
+                metadata
             );
             break;
 
@@ -275,7 +373,7 @@ export async function triggerPersonalization(userId: string, stateResult: StateR
                 'UNLOCK_CHALLENGE',
                 reason,
                 stateResult.confidenceScore,
-                { avgScore: metrics.avgScore, recentXP: metrics.recentXP }
+                metadata
             );
             break;
 
@@ -287,7 +385,7 @@ export async function triggerPersonalization(userId: string, stateResult: StateR
                 'SEND_REENGAGEMENT',
                 reason,
                 stateResult.confidenceScore,
-                { daysSinceActive: Math.round((Date.now() - (metrics.lastActiveDate?.getTime() || 0)) / (1000 * 60 * 60 * 24)) }
+                metadata
             );
             break;
 
@@ -299,7 +397,7 @@ export async function triggerPersonalization(userId: string, stateResult: StateR
                 'POSITIVE_REINFORCEMENT',
                 reason,
                 stateResult.confidenceScore,
-                { avgScore: metrics.avgScore }
+                metadata
             );
             break;
     }

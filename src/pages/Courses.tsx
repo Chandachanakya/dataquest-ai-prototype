@@ -5,11 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { 
-  ArrowLeft, 
-  Code2, 
-  Brain, 
-  BarChart3, 
+import {
+  ArrowLeft,
+  Code2,
+  Brain,
+  BarChart3,
   Database,
   BookOpen,
   Clock,
@@ -23,8 +23,8 @@ interface Course {
   description: string;
   icon: React.ReactNode;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  modules: number;
-  completedModules: number;
+  levels: number;
+  completedLevels: number;
   duration: string;
   topics: string[];
   color: string;
@@ -37,8 +37,8 @@ const courses: Course[] = [
     description: 'Master Python fundamentals, data structures, and libraries like NumPy and Pandas for data manipulation.',
     icon: <Code2 className="h-8 w-8" />,
     difficulty: 'beginner',
-    modules: 12,
-    completedModules: 5,
+    levels: 12,
+    completedLevels: 5,
     duration: '8 hours',
     topics: ['Variables & Types', 'Data Structures', 'Functions', 'NumPy', 'Pandas', 'Data Cleaning'],
     color: 'from-primary to-primary/60'
@@ -49,8 +49,8 @@ const courses: Course[] = [
     description: 'Learn supervised and unsupervised learning algorithms, model evaluation, and practical ML applications.',
     icon: <Brain className="h-8 w-8" />,
     difficulty: 'intermediate',
-    modules: 15,
-    completedModules: 3,
+    levels: 15,
+    completedLevels: 3,
     duration: '12 hours',
     topics: ['Linear Regression', 'Classification', 'Clustering', 'Neural Networks', 'Model Evaluation', 'Feature Engineering'],
     color: 'from-accent to-accent/60'
@@ -61,8 +61,8 @@ const courses: Course[] = [
     description: 'Create compelling visualizations with Matplotlib, Seaborn, and modern interactive charting libraries.',
     icon: <BarChart3 className="h-8 w-8" />,
     difficulty: 'beginner',
-    modules: 10,
-    completedModules: 8,
+    levels: 10,
+    completedLevels: 8,
     duration: '6 hours',
     topics: ['Matplotlib', 'Seaborn', 'Plotly', 'Chart Types', 'Storytelling', 'Dashboards'],
     color: 'from-success to-success/60'
@@ -73,8 +73,8 @@ const courses: Course[] = [
     description: 'Query databases effectively, understand relational models, and optimize your data retrieval skills.',
     icon: <Database className="h-8 w-8" />,
     difficulty: 'intermediate',
-    modules: 14,
-    completedModules: 0,
+    levels: 14,
+    completedLevels: 0,
     duration: '10 hours',
     topics: ['SELECT Queries', 'JOINs', 'Aggregations', 'Subqueries', 'Indexing', 'Query Optimization'],
     color: 'from-yellow-500 to-yellow-500/60'
@@ -139,7 +139,7 @@ const Courses = () => {
             Data Science Learning Path
           </h2>
           <p className="text-muted-foreground text-base sm:text-lg">
-            Master data science from fundamentals to advanced techniques with our interactive modules.
+            Master data science from fundamentals to advanced techniques with our interactive levels.
           </p>
         </div>
 
@@ -147,7 +147,7 @@ const Courses = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 animate-fade-in-up delay-100">
           <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
             <p className="text-2xl sm:text-3xl font-bold text-primary">51</p>
-            <p className="text-xs sm:text-sm text-muted-foreground">Total Modules</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Total Levels</p>
           </Card>
           <Card className="text-center p-3 sm:p-4 hover-lift transition-all duration-300">
             <p className="text-2xl sm:text-3xl font-bold text-success">16</p>
@@ -166,15 +166,14 @@ const Courses = () => {
         {/* Course Grid */}
         <div className="grid md:grid-cols-2 gap-6">
           {courses.map((course, index) => {
-            const progress = getProgressPercentage(course.completedModules, course.modules);
+            const progress = getProgressPercentage(course.completedLevels, course.levels);
             const isHovered = hoveredCourse === course.id;
-            
+
             return (
-              <Card 
+              <Card
                 key={course.id}
-                className={`relative overflow-hidden transition-all duration-300 cursor-pointer border-2 animate-fade-in-up ${
-                  isHovered ? 'border-primary shadow-lg scale-[1.02]' : 'border-border hover:border-primary/50'
-                }`}
+                className={`relative overflow-hidden transition-all duration-300 cursor-pointer border-2 animate-fade-in-up ${isHovered ? 'border-primary shadow-lg scale-[1.02]' : 'border-border hover:border-primary/50'
+                  }`}
                 style={{ animationDelay: `${200 + index * 100}ms` }}
                 onMouseEnter={() => setHoveredCourse(course.id)}
                 onMouseLeave={() => setHoveredCourse(null)}
@@ -182,14 +181,14 @@ const Courses = () => {
               >
                 {/* Gradient accent bar */}
                 <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${course.color}`} />
-                
+
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className={`p-3 rounded-xl bg-gradient-to-br ${course.color} text-primary-foreground`}>
                       {course.icon}
                     </div>
-                    <Badge 
-                      variant="outline" 
+                    <Badge
+                      variant="outline"
                       className={difficultyConfig[course.difficulty].className}
                     >
                       {difficultyConfig[course.difficulty].label}
@@ -212,7 +211,7 @@ const Courses = () => {
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3" />
-                        {course.completedModules} of {course.modules} modules
+                        {course.completedLevels} of {course.levels} levels
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -229,9 +228,9 @@ const Courses = () => {
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {course.topics.slice(0, 4).map((topic) => (
-                        <Badge 
-                          key={topic} 
-                          variant="secondary" 
+                        <Badge
+                          key={topic}
+                          variant="secondary"
                           className="text-xs px-2 py-0.5"
                         >
                           {topic}
@@ -246,7 +245,7 @@ const Courses = () => {
                   </div>
 
                   {/* Action Button */}
-                  <Button 
+                  <Button
                     className="w-full mt-2 group"
                     variant={progress > 0 ? "default" : "outline"}
                     onClick={(e) => {
