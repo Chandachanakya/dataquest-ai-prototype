@@ -87,11 +87,14 @@ export const AdaptiveDifficultyCard = ({ recommendation }: AdaptiveDifficultyCar
                     <Target className="h-5 w-5" />
                     Adaptive Difficulty
                 </CardTitle>
-                <CardDescription>
-                    Recommended Level: <Badge variant="outline" className="ml-1">
+                <div className="flex items-center gap-2 mt-1">
+                    <CardDescription className="mb-0">
+                        Recommended Level:
+                    </CardDescription>
+                    <Badge variant="outline">
                         {level.toUpperCase()}
                     </Badge>
-                </CardDescription>
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">

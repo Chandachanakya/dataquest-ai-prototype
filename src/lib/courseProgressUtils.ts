@@ -114,11 +114,23 @@ export async function loadPythonProgress(userId: string | undefined): Promise<Co
 }
 
 /**
- * Load progress from localStorage for a given storage key
+ * Load progress from localStorage for a given storage key (user-specific)
  */
-function loadLocalStorageProgress(storageKey: string): CourseProgress {
+function loadLocalStorageProgress(storageKey: string, userId: string | undefined): CourseProgress {
+    if (!userId) {
+        return {
+            currentLevel: 1,
+            totalXP: 0,
+            completedModules: [],
+            completedChallenges: [],
+            completedBossFights: []
+        };
+    }
+
     try {
-        const saved = localStorage.getItem(storageKey);
+        // Use user-specific storage key
+        const userStorageKey = `${storageKey}_${userId}`;
+        const saved = localStorage.getItem(userStorageKey);
         if (saved) {
             return JSON.parse(saved);
         }
@@ -136,24 +148,24 @@ function loadLocalStorageProgress(storageKey: string): CourseProgress {
 }
 
 /**
- * Load progress for SQL course from localStorage
+ * Load progress for SQL course from localStorage (user-specific)
  */
-export function loadSQLProgress(): CourseProgress {
-    return loadLocalStorageProgress(SQL_STORAGE_KEY);
+export function loadSQLProgress(userId: string | undefined): CourseProgress {
+    return loadLocalStorageProgress(SQL_STORAGE_KEY, userId);
 }
 
 /**
- * Load progress for ML course from localStorage
+ * Load progress for ML course from localStorage (user-specific)
  */
-export function loadMLProgress(): CourseProgress {
-    return loadLocalStorageProgress(ML_STORAGE_KEY);
+export function loadMLProgress(userId: string | undefined): CourseProgress {
+    return loadLocalStorageProgress(ML_STORAGE_KEY, userId);
 }
 
 /**
- * Load progress for Visualization course from localStorage
+ * Load progress for Visualization course from localStorage (user-specific)
  */
-export function loadVisualizationProgress(): CourseProgress {
-    return loadLocalStorageProgress(VIZ_STORAGE_KEY);
+export function loadVisualizationProgress(userId: string | undefined): CourseProgress {
+    return loadLocalStorageProgress(VIZ_STORAGE_KEY, userId);
 }
 
 /**
@@ -180,11 +192,11 @@ export async function loadAllCourseProgress(userId: string | undefined): Promise
     visualization: CourseInfo;
     sql: CourseInfo;
 }> {
-    // Load progress for all courses
+    // Load progress for all courses (user-specific)
     const pythonProgress = await loadPythonProgress(userId);
-    const sqlProgress = loadSQLProgress();
-    const mlProgress = loadMLProgress();
-    const vizProgress = loadVisualizationProgress();
+    const sqlProgress = loadSQLProgress(userId);
+    const mlProgress = loadMLProgress(userId);
+    const vizProgress = loadVisualizationProgress(userId);
 
     return {
         python: {

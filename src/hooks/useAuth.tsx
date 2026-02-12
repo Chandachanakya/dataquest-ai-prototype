@@ -1,6 +1,7 @@
 import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { migrateLocalStorageToUserSpecific } from '@/lib/localStorageMigration';
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +26,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Migrate old localStorage data when user logs in
+        if (session?.user && event === 'SIGNED_IN') {
+          migrateLocalStorageToUserSpecific(session.user.id);
+        }
       }
     );
 
@@ -33,6 +39,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Migrate old localStorage data for existing session
+      if (session?.user) {
+        migrateLocalStorageToUserSpecific(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -40,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, username: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -51,7 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       },
     });
-    
+
     return { error };
   };
 
@@ -60,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       password,
     });
-    
+
     return { error };
   };
 

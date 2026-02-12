@@ -1,0 +1,11 @@
+id,user_id,state,reason,computed_at,created_at
+105,1cb529c2-0b44-43b9-a274-392fa3bb2c8b,Drop-risk,Low engagement: User has been active on fewer than 2 days in the last month.,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00
+106,37f61f06-09d6-43cb-8b1c-db0439a8debc,Drop-risk,User has been inactive for over 14 days.,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00
+107,8678d249-9ea9-46d4-ab9a-9ffa91d99677,Drop-risk,User has been inactive for over 14 days.,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00
+108,8d939907-819f-4b09-a779-802cc53a2a24,Consistent,User is making steady and consistent progress.,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00
+109,a405c67f-3eae-4a68-bbc2-97c7a3fc7f83,Consistent,User is making steady and consistent progress.,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00
+110,af2545df-cfd1-41fa-b655-de8a1074d402,Consistent,User is making steady and consistent progress.,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00
+111,b048c14f-669a-4c85-bacb-67344f468994,Consistent,User is making steady and consistent progress.,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00
+112,d1f597cd-ddb6-42cc-89eb-d35e106d3b21,Drop-risk,Low engagement: User has been active on fewer than 2 days in the last month.,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00
+113,dbd2efc2-58e8-4842-940e-7b9bfaa292ff,Fast,High performance: Average score is above 90% with rapid XP gain (520 XP this week).,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00
+114,edb3f6a3-9a1b-4172-b34a-b3db9bf47004,Drop-risk,User has been inactive for over 14 days.,2026-02-12 00:00:00.173863+00:00,2026-02-06 16:34:33.468058+00:00

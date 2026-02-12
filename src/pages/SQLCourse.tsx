@@ -23,9 +23,18 @@ const SQLCourse = () => {
     const [selectedModule, setSelectedModule] = useState<number | null>(null);
     const [progress, setProgress] = useState<CourseProgress>(getInitialProgress);
 
-    // Load progress from localStorage
+    // Get user-specific storage key
+    const getUserStorageKey = () => {
+        if (!user) return SQL_STORAGE_KEY;
+        return `${SQL_STORAGE_KEY}_${user.id}`;
+    };
+
+    // Load progress from localStorage (user-specific)
     useEffect(() => {
-        const saved = localStorage.getItem(SQL_STORAGE_KEY);
+        if (!user) return;
+
+        const storageKey = getUserStorageKey();
+        const saved = localStorage.getItem(storageKey);
         if (saved) {
             try {
                 setProgress(JSON.parse(saved));
@@ -33,12 +42,15 @@ const SQLCourse = () => {
                 console.error("Failed to parse saved progress");
             }
         }
-    }, []);
+    }, [user]);
 
-    // Save progress to localStorage
+    // Save progress to localStorage (user-specific)
     useEffect(() => {
-        localStorage.setItem(SQL_STORAGE_KEY, JSON.stringify(progress));
-    }, [progress]);
+        if (!user) return;
+
+        const storageKey = getUserStorageKey();
+        localStorage.setItem(storageKey, JSON.stringify(progress));
+    }, [progress, user]);
 
     const handleChallengeComplete = useCallback((challengeId: string, xp: number) => {
         setProgress(prev => {

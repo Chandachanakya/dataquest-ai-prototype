@@ -10,6 +10,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getSmartRecommendations, calculateDropRiskScore, type QuestRecommendation, type DropRiskAnalysis } from './smartRecommendations';
 import { getOptimalQuestSequence, getAdaptiveDifficultyLevel, selectBestIntervention, recordInterventionOutcome, type QuestSequence, type DifficultyRecommendation, type InterventionArm } from './reinforcementLearning';
+import { predictDropRisk, predictIntervention, getMLApiStatus } from './mlApiClient';
+import { getUserExperimentGroup, type ExperimentGroup } from './experimentService';
 
 /**
  * RECOMPUTE POLICY (Phase 0 - Defensible AI)
@@ -43,6 +45,9 @@ export interface StateResult {
     metrics: LearnerMetrics;
     confidenceScore: number; // Decision confidence
     distribution: StateDistribution; // NEW: Full probability distribution
+    decisionSource?: 'ml_api' | 'heuristic'; // Track prediction source
+    mlModelVersion?: string; // ML model version if used
+    experimentGroup?: ExperimentGroup; // A/B test group assignment
 }
 
 /**
@@ -212,11 +217,76 @@ function calculateConfidence(totalAttempts: number, daysSinceActive: number): nu
 /**
  * Determine learner state based on metrics using Probabilistic Modeling (Phase 2)
  * 
- * Instead of hard thresholds, we calculate a score for each state and normalize
- * them into a probability distribution. This provides "Uncertainty Modeling".
+ * PHASE 4 ML INTEGRATION:
+ * - First attempts to use ML API for drop risk prediction if enabled
+ * - Falls back to heuristic logic if ML API is unavailable
+ * - Logs decision source for A/B testing analysis
+ * 
+ * PHASE 5 A/B TESTING:
+ * - Checks experiment group assignment
+ * - Forces ML (treatment) or heuristic (control) based on group
+ * - Tracks experiment group in results
  */
 export async function determineLearnerState(userId: string): Promise<StateResult> {
     const metrics = await calculateMetrics(userId);
+    const daysSinceActive = metrics.lastActiveDate
+        ? (Date.now() - metrics.lastActiveDate.getTime()) / (1000 * 60 * 60 * 24)
+        : 30;
+
+    // PHASE 5: Check experiment assignment
+    const experimentGroup = await getUserExperimentGroup(userId, 'ml_vs_heuristic');
+    const forceML = experimentGroup === 'treatment';
+    const forceHeuristic = experimentGroup === 'control';
+
+    // PHASE 4: Try ML API (if enabled OR if in treatment group)
+    const mlFeatures = {
+        days_since_last_active: daysSinceActive,
+        activity_frequency: metrics.totalAttempts > 0 ? metrics.totalAttempts / 30 : 0,
+        average_score: metrics.normalizedAvgScore,
+        total_attempts: metrics.totalAttempts,
+        completion_time_vs_median: 1.0, // Placeholder
+        retry_ratio: metrics.retryRatio,
+        score_variance: metrics.scoreVariance,
+        recent_xp_velocity: metrics.recentXP / 7
+    };
+
+    // Only try ML API if not forced to use heuristics
+    const mlPrediction = !forceHeuristic ? await predictDropRisk(userId, mlFeatures) : null;
+
+    if (mlPrediction && !forceHeuristic) {
+        // ML API succeeded - use ML prediction
+        const mlState: LearnerState = mlPrediction.risk_level === 'high' ? 'DROP_RISK' :
+            mlPrediction.risk_level === 'medium' ? 'STRUGGLING' :
+                mlPrediction.probability > 0.6 ? 'FAST' : 'CONSISTENT';
+
+        // Create distribution based on ML probability
+        const distribution: StateDistribution = {
+            'DROP_RISK': mlPrediction.risk_level === 'high' ? mlPrediction.probability : 0.1,
+            'STRUGGLING': mlPrediction.risk_level === 'medium' ? mlPrediction.probability : 0.2,
+            'FAST': mlPrediction.probability < 0.3 && metrics.normalizedAvgScore > 75 ? 0.4 : 0.1,
+            'CONSISTENT': 1 - mlPrediction.probability
+        };
+
+        return {
+            state: mlState,
+            reason: `ML prediction (${mlPrediction.model_version}): ${mlPrediction.risk_level} risk (${(mlPrediction.probability * 100).toFixed(0)}%)`,
+            metrics,
+            confidenceScore: mlPrediction.probability,
+            distribution,
+            decisionSource: 'ml_api',
+            mlModelVersion: mlPrediction.model_version,
+            experimentGroup
+        };
+    }
+
+    // FALLBACK: Use heuristic logic
+    if (forceHeuristic) {
+        console.log('Using heuristic learner state determination (control group)');
+    } else if (forceML) {
+        console.warn('ML API unavailable for treatment group - falling back to heuristics');
+    } else {
+        console.log('Using heuristic learner state determination');
+    }
 
     // 1. Calculate Raw Scores for each state
     const scores: Record<LearnerState, number> = {
@@ -226,37 +296,25 @@ export async function determineLearnerState(userId: string): Promise<StateResult
         'DROP_RISK': 0
     };
 
-    const daysSinceActive = metrics.lastActiveDate
-        ? (Date.now() - metrics.lastActiveDate.getTime()) / (1000 * 60 * 60 * 24)
-        : 30; // Default to 30 if null
-
     // STRUGGLING Score
-    // High if low score, high retry ratio, low completion rate
-    // Range approx 0-3
     if (metrics.totalAttempts > 0) {
-        const scoreFactor = Math.max(0, (60 - metrics.normalizedAvgScore) / 20); // 0 at 60, 2 at 20
-        const retryFactor = Math.max(0, metrics.retryRatio - 1.2); // Bonus if repeats often
+        const scoreFactor = Math.max(0, (60 - metrics.normalizedAvgScore) / 20);
+        const retryFactor = Math.max(0, metrics.retryRatio - 1.2);
         scores['STRUGGLING'] = scoreFactor + retryFactor;
     }
 
     // FAST Score
-    // High if high score, fast completion, high recent XP
-    // Range approx 0-3
     if (metrics.totalAttempts > 0) {
-        const scoreFactor = Math.max(0, (metrics.normalizedAvgScore - 75) / 10); // 0 at 75, 2.5 at 100
+        const scoreFactor = Math.max(0, (metrics.normalizedAvgScore - 75) / 10);
         const xpFactor = metrics.recentXP > 200 ? 1 : 0;
         scores['FAST'] = scoreFactor + xpFactor;
     }
 
     // DROP_RISK Score
-    // High if inactive for days
-    // Range approx 0-3
-    scores['DROP_RISK'] = Math.min(3, Math.max(0, (daysSinceActive - 3) / 2)); // 0 at 3 days, 1 at 5 days, 3 at 9+ days
+    scores['DROP_RISK'] = Math.min(3, Math.max(0, (daysSinceActive - 3) / 2));
 
     // CONSISTENT Score
-    // Baseline score + consistency bonus (low variance)
-    // Range approx 0-3
-    const varianceBonus = Math.max(0, 2 - (metrics.scoreVariance / 100)); // Higher bonus for low variance
+    const varianceBonus = Math.max(0, 2 - (metrics.scoreVariance / 100));
     scores['CONSISTENT'] = 0.5 + varianceBonus + (metrics.completionRate * 1.5);
 
     // 2. Normalize to Probability Distribution
@@ -283,12 +341,10 @@ export async function determineLearnerState(userId: string): Promise<StateResult
         }
     }
 
-    // Confidence is the margin between 1st and 2nd choice (or just maxProb if dominant)
-    // Scaled to 0-1 range where >0.2 is decent confidence
     const margin = maxProb - secondMaxProb;
     const confidenceScore = Math.min(1.0, margin * 2 + 0.2);
 
-    // Generate reason based on primary state contributors
+    // Generate reason
     let reason = '';
     switch (primaryState) {
         case 'STRUGGLING':
@@ -310,13 +366,16 @@ export async function determineLearnerState(userId: string): Promise<StateResult
         reason,
         metrics,
         confidenceScore,
-        distribution
+        distribution,
+        decisionSource: 'heuristic',
+        experimentGroup
     };
 }
 
 /**
  * Log decision to decision_logs table
- * NOW INCLUDES CONFIDENCE SCORE (Phase 0)
+ * PHASE 4: Now includes decision source (ML vs heuristic) for A/B testing
+ * PHASE 5: Includes experiment group assignment
  */
 async function logDecision(
     userId: string,
@@ -324,7 +383,8 @@ async function logDecision(
     action: string,
     reason: string,
     confidenceScore: number,
-    metadata: Record<string, any> = {}
+    metadata: Record<string, any> = {},
+    experimentGroup?: ExperimentGroup
 ) {
     await supabase.from('decision_logs').insert({
         user_id: userId,
@@ -332,7 +392,11 @@ async function logDecision(
         action_taken: action,
         reason,
         confidence_score: confidenceScore,
-        metadata,
+        metadata: {
+            ...metadata,
+            ml_api_status: getMLApiStatus(), // Track ML API availability
+            experiment_group: experimentGroup // Track A/B test group
+        },
         timestamp: new Date().toISOString()
     });
 }
@@ -341,7 +405,7 @@ async function logDecision(
  * Trigger personalized action based on learner state
  */
 export async function triggerPersonalization(userId: string, stateResult: StateResult) {
-    const { state, reason, metrics, distribution } = stateResult;
+    const { state, reason, metrics, distribution, experimentGroup } = stateResult;
 
     // We pass the distribution into metadata for logging
     const metadata = {
@@ -361,7 +425,8 @@ export async function triggerPersonalization(userId: string, stateResult: StateR
                 'RECOMMEND_REVISION',
                 reason,
                 stateResult.confidenceScore,
-                metadata
+                metadata,
+                experimentGroup
             );
             break;
 
@@ -373,7 +438,8 @@ export async function triggerPersonalization(userId: string, stateResult: StateR
                 'UNLOCK_CHALLENGE',
                 reason,
                 stateResult.confidenceScore,
-                metadata
+                metadata,
+                experimentGroup
             );
             break;
 
@@ -385,7 +451,8 @@ export async function triggerPersonalization(userId: string, stateResult: StateR
                 'SEND_REENGAGEMENT',
                 reason,
                 stateResult.confidenceScore,
-                metadata
+                metadata,
+                experimentGroup
             );
             break;
 
@@ -397,7 +464,8 @@ export async function triggerPersonalization(userId: string, stateResult: StateR
                 'POSITIVE_REINFORCEMENT',
                 reason,
                 stateResult.confidenceScore,
-                metadata
+                metadata,
+                experimentGroup
             );
             break;
     }

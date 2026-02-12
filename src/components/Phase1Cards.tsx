@@ -67,23 +67,26 @@ interface DropRiskCardProps {
 export const DropRiskCard = ({ analysis }: DropRiskCardProps) => {
     return (
         <Card className={`animate-fade-in-up delay-300 hover:shadow-md transition-shadow duration-300 ${analysis.riskLevel === 'HIGH' ? 'border-destructive/50 bg-destructive/5' :
-                analysis.riskLevel === 'MEDIUM' ? 'border-warning/50 bg-warning/5' :
-                    'border-success/50 bg-success/5'
+            analysis.riskLevel === 'MEDIUM' ? 'border-warning/50 bg-warning/5' :
+                'border-success/50 bg-success/5'
             }`}>
             <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                     <Target className="h-5 w-5" />
                     Engagement Health
                 </CardTitle>
-                <CardDescription>
-                    Risk Level: <Badge variant={
+                <div className="flex items-center gap-2 mt-1">
+                    <CardDescription className="mb-0">
+                        Risk Level:
+                    </CardDescription>
+                    <Badge variant={
                         analysis.riskLevel === 'HIGH' ? 'destructive' :
                             analysis.riskLevel === 'MEDIUM' ? 'default' :
                                 'outline'
-                    } className="ml-1">
+                    }>
                         {analysis.riskLevel}
                     </Badge>
-                </CardDescription>
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
@@ -96,8 +99,8 @@ export const DropRiskCard = ({ analysis }: DropRiskCardProps) => {
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div
                                 className={`h-full transition-all duration-500 ${analysis.riskLevel === 'HIGH' ? 'bg-destructive' :
-                                        analysis.riskLevel === 'MEDIUM' ? 'bg-warning' :
-                                            'bg-success'
+                                    analysis.riskLevel === 'MEDIUM' ? 'bg-warning' :
+                                        'bg-success'
                                     }`}
                                 style={{ width: `${analysis.riskScore * 100}%` }}
                             />
