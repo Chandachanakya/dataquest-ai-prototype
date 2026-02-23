@@ -37,14 +37,23 @@ MODEL_DIR = "../ml_pipeline/models"
 
 # Load models (with fallback to mock models if not available)
 try:
-    drop_risk_model = joblib.load(f"{MODEL_DIR}/xgboost_v1.pkl")
-    MODEL_VERSION = "xgboost_v1"
+    # Try to load Random Forest model (trained in Phase 2)
+    drop_risk_model = joblib.load(f"{MODEL_DIR}/drop_risk_rf_v1.pkl")
+    MODEL_VERSION = "random_forest_v1"
     USE_REAL_MODEL = True
+    print("✅ Loaded trained Random Forest model")
 except FileNotFoundError:
-    print("⚠️  WARNING: No trained models found. Using mock predictions.")
-    drop_risk_model = None
-    MODEL_VERSION = "mock_v1"
-    USE_REAL_MODEL = False
+    try:
+        # Fallback to Logistic Regression
+        drop_risk_model = joblib.load(f"{MODEL_DIR}/drop_risk_lr_v1.pkl")
+        MODEL_VERSION = "logistic_regression_v1"
+        USE_REAL_MODEL = True
+        print("✅ Loaded trained Logistic Regression model")
+    except FileNotFoundError:
+        print("⚠️  WARNING: No trained models found. Using mock predictions.")
+        drop_risk_model = None
+        MODEL_VERSION = "mock_v1"
+        USE_REAL_MODEL = False
 
 
 # ============================================================================
@@ -64,6 +73,8 @@ class DropRiskRequest(BaseModel):
     retry_ratio: Optional[float] = None
     score_variance: Optional[float] = None
     recent_xp_velocity: Optional[float] = None
+    completion_rate: Optional[float] = None
+    avg_difficulty: Optional[float] = None
 
 
 class DropRiskResponse(BaseModel):
@@ -116,9 +127,9 @@ class NextQuestResponse(BaseModel):
 # ============================================================================
 
 def extract_features(request: DropRiskRequest) -> np.ndarray:
-    """Extract feature vector from request."""
+    """Extract feature vector from request (10 features to match trained model)."""
     if request.features:
-        # Use provided features
+        # Use provided features dictionary
         feature_vector = [
             request.features.get('days_since_last_active', 0),
             request.features.get('activity_frequency', 0),
@@ -127,7 +138,9 @@ def extract_features(request: DropRiskRequest) -> np.ndarray:
             request.features.get('completion_time_vs_median', 1.0),
             request.features.get('retry_ratio', 1.0),
             request.features.get('score_variance', 0),
-            request.features.get('recent_xp_velocity', 0)
+            request.features.get('recent_xp_velocity', 0),
+            request.features.get('completion_rate', 0.5),
+            request.features.get('avg_difficulty', 3.0)
         ]
     else:
         # Use individual feature fields
@@ -139,7 +152,9 @@ def extract_features(request: DropRiskRequest) -> np.ndarray:
             request.completion_time_vs_median or 1.0,
             request.retry_ratio or 1.0,
             request.score_variance or 0,
-            request.recent_xp_velocity or 0
+            request.recent_xp_velocity or 0,
+            request.completion_rate or 0.5,
+            request.avg_difficulty or 3.0
         ]
     
     return np.array(feature_vector).reshape(1, -1)
@@ -220,7 +235,9 @@ async def predict_drop_risk(request: DropRiskRequest):
             'completion_time_vs_median': features[0][4],
             'retry_ratio': features[0][5],
             'score_variance': features[0][6],
-            'recent_xp_velocity': features[0][7]
+            'recent_xp_velocity': features[0][7],
+            'completion_rate': features[0][8],
+            'avg_difficulty': features[0][9]
         }
         
         # Predict
@@ -247,7 +264,7 @@ async def predict_drop_risk(request: DropRiskRequest):
         )
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 
 @app.post("/predict/intervention", response_model=InterventionResponse)

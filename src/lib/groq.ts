@@ -3,13 +3,13 @@ import Groq from 'groq-sdk';
 import { Message } from './types';
 
 const groq = new Groq({
-  apiKey: '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',
+  apiKey: import.meta.env.VITE_GROQ_API_KEY,
   dangerouslyAllowBrowser: true,
 });
 
 export async function getGroqChatCompletion(messages: Message[]): Promise<string> {
   const systemMessage = {
-    role: 'system',
+    role: 'system' as const,
     content: `You are an AI learning mentor for a data science learning platform. Your role is to assist users with their learning journey.
     Users will ask you for:
     - Personalized learning path recommendations
@@ -32,3 +32,4 @@ export async function getGroqChatCompletion(messages: Message[]): Promise<string
 
   return response.choices[0]?.message?.content || 'I am not sure how to respond to that. Please try again.';
 }
+

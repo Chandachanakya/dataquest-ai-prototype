@@ -1,0 +1,32 @@
+============================================================
+PHASE 2: MODEL TRAINING SUMMARY
+============================================================
+Timestamp: 2026-02-12 23:46:09
+============================================================
+
+TEST SET PERFORMANCE:
+------------------------------------------------------------
+
+Logistic Regression:
+  roc_auc     : 0.5000
+  f1          : 0.9787
+  precision   : 1.0000
+  recall      : 0.9583
+
+Random Forest:
+  roc_auc     : 0.5000
+  f1          : 1.0000
+  precision   : 1.0000
+  recall      : 1.0000
+
+
+CROSS-VALIDATION RESULTS:
+------------------------------------------------------------
+Logistic Regression: nan ± nan
+Random Forest: nan ± nan
+
+
+MODELS SAVED:
+------------------------------------------------------------
+  - models/drop_risk_lr_v1.pkl
+  - models/drop_risk_rf_v1.pkl
