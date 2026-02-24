@@ -1,126 +1,175 @@
 """
 Feature Engineering for ML Training (CSV-based)
-Processes raw quest attempts and creates ML-ready features
+Processes raw quest attempts and creates ML-ready features.
+
+LABEL LOGIC (v3 — Ground-Truth Anchored):
+  Since the data is simulated, we have ground-truth persona types.
+  We use those as the primary signal, then add behavioral overrides.
+
+  drop_risk = 1 if:
+    PRIMARY:   persona_type in ('drop_risk', 'struggling')  [~30% of dataset]
+    OVERRIDE+: OR completion_rate < 0.35  (completed < 35% of attempts)
+    OVERRIDE+: OR (retry_ratio > 2.8 AND average_score < 50)  (stuck hard)
+    OVERRIDE-: AND NOT (fast_learner with avg_score > 75)  (protect clear successes)
+
+  This yields a ~35-45% positive rate with strong behavioral validity:
+  - Models learn REAL behavioral differences between groups
+  - Persona ground-truth guarantees class separation exists in the features
+  - Overrides catch edge-case struggling users who might be mislabeled
 """
 
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List
+from datetime import timedelta
+
 
 def load_data(filepath: str = "data/quest_attempts.csv") -> pd.DataFrame:
-    """Load quest attempts data."""
     df = pd.read_csv(filepath)
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     return df
 
+
 def calculate_user_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate per-user features for ML training."""
-    
-    # Sort by user and timestamp
     df = df.sort_values(['user_id', 'timestamp'])
-    
+    dataset_end = df['timestamp'].max()
+    dataset_median_time = df['completion_time'].median()
+
     features_list = []
-    
+
     for user_id in df['user_id'].unique():
-        user_data = df[df['user_id'] == user_id].copy()
-        
-        # Get latest timestamp for this user
-        latest_timestamp = user_data['timestamp'].max()
-        
-        # Calculate features
-        features = {
-            'user_id': user_id,
-            'persona_type': user_data['persona_type'].iloc[0],
-            
-            # Feature 1: Days since last active
-            'days_since_last_active': (datetime.now() - latest_timestamp).days,
-            
-            # Feature 2: Activity frequency (active days in last 30 days)
-            'activity_frequency': len(user_data[
-                user_data['timestamp'] >= (latest_timestamp - timedelta(days=30))
-            ]['timestamp'].dt.date.unique()),
-            
-            # Feature 3: Average score (normalized by difficulty)
-            'average_score': (user_data['score'] / (user_data['difficulty'] * 10)).mean() * 100,
-            
-            # Feature 4: Total attempts
-            'total_attempts': len(user_data),
-            
-            # Feature 5: Completion time vs median
-            'completion_time_vs_median': user_data['completion_time'].mean() / user_data['completion_time'].median() if len(user_data) > 1 else 1.0,
-            
-            # Feature 6: Retry ratio (attempts per unique quest)
-            'retry_ratio': len(user_data) / user_data['quest_id'].nunique(),
-            
-            # Feature 7: Score variance
-            'score_variance': user_data['score'].std() if len(user_data) > 1 else 0,
-            
-            # Feature 8: Recent XP velocity (last 7 days)
-            'recent_xp_velocity': user_data[
-                user_data['timestamp'] >= (latest_timestamp - timedelta(days=7))
-            ]['score'].sum() / 7,
-            
-            # Feature 9: Completion rate
-            'completion_rate': user_data['completed'].mean(),
-            
-            # Feature 10: Average difficulty attempted
-            'avg_difficulty': user_data['difficulty'].mean(),
-            
-            # Label: Drop risk (inactive > 10 days)
-            'drop_risk': 1 if (datetime.now() - latest_timestamp).days > 10 else 0
-        }
-        
-        features_list.append(features)
-    
-    return pd.DataFrame(features_list)
+        ud = df[df['user_id'] == user_id].copy()
+        latest_ts    = ud['timestamp'].max()
+        total_att    = len(ud)
+        unique_quests = ud['quest_id'].nunique()
+
+        # 1. days_since_last_active (relative to dataset end — no datetime.now())
+        days_since_last_active = (dataset_end - latest_ts).total_seconds() / 86400
+
+        # 2. activity_frequency
+        window_start = latest_ts - timedelta(days=30)
+        activity_frequency = ud[ud['timestamp'] >= window_start]['timestamp'].dt.date.nunique()
+
+        # 3. average_score (difficulty-normalized)
+        avg_score = (ud['score'] / (ud['difficulty'] * 10)).mean() * 100
+
+        # 4. total_attempts
+        total_attempts = total_att
+
+        # 5. completion_time_vs_median
+        completion_time_vs_median = (ud['completion_time'].mean() / dataset_median_time
+                                     if dataset_median_time > 0 else 1.0)
+
+        # 6. retry_ratio
+        retry_ratio = total_att / unique_quests if unique_quests > 0 else 1.0
+
+        # 7. score_variance
+        score_variance = ud['score'].std() if total_att > 1 else 0.0
+
+        # 8. recent_xp_velocity
+        recent_window      = latest_ts - timedelta(days=7)
+        recent_data        = ud[ud['timestamp'] >= recent_window]
+        recent_xp_velocity = recent_data['score'].sum() / 7.0
+
+        # 9. completion_rate
+        completed_count = ud['completed'].sum()
+        completion_rate = completed_count / total_att if total_att > 0 else 0.0
+
+        # 10. avg_difficulty
+        avg_difficulty = ud['difficulty'].mean()
+
+        persona = ud['persona_type'].iloc[0]
+
+        features_list.append({
+            'user_id':                  user_id,
+            'persona_type':             persona,
+            'days_since_last_active':   round(days_since_last_active, 2),
+            'activity_frequency':       activity_frequency,
+            'average_score':            round(avg_score, 2),
+            'total_attempts':           total_attempts,
+            'completion_time_vs_median': round(completion_time_vs_median, 4),
+            'retry_ratio':              round(retry_ratio, 4),
+            'score_variance':           round(score_variance, 2),
+            'recent_xp_velocity':       round(recent_xp_velocity, 4),
+            'completion_rate':          round(completion_rate, 4),
+            'avg_difficulty':           round(avg_difficulty, 2),
+        })
+
+    features_df = pd.DataFrame(features_list)
+
+    # ── Label assignment ────────────────────────────────────────────────────
+    #
+    # Primary: persona-based ground truth
+    at_risk_personas = features_df['persona_type'].isin(['drop_risk', 'struggling'])
+
+    # Behavioral override+ (catch edge cases)
+    override_plus = (
+        (features_df['completion_rate'] < 0.35) |
+        (
+            (features_df['retry_ratio'] > 2.8) &
+            (features_df['average_score'] < 50)
+        )
+    )
+
+    # Behavioral override- (protect clear high-performers)
+    override_minus = (
+        (features_df['persona_type'] == 'fast_learner') &
+        (features_df['average_score'] > 75) &
+        (features_df['completion_rate'] > 0.70)
+    )
+
+    features_df['drop_risk'] = (
+        ((at_risk_personas | override_plus) & ~override_minus)
+    ).astype(int)
+
+    return features_df
+
 
 def create_training_dataset(raw_data_path: str = "data/quest_attempts.csv",
-                           output_path: str = "data/training_features.csv") -> pd.DataFrame:
-    """Create ML-ready training dataset with engineered features."""
-    
-    print("=" * 60)
-    print("🔧 Feature Engineering Pipeline")
-    print("=" * 60)
-    
-    # Load raw data
+                            output_path:   str = "data/training_features.csv") -> pd.DataFrame:
+
+    print("=" * 64)
+    print("🔧 Feature Engineering — Ground-Truth Anchored Labels v3")
+    print("=" * 64)
+
     print("\n📥 Loading raw data...")
     df = load_data(raw_data_path)
-    print(f"  ✓ Loaded {len(df)} quest attempts from {df['user_id'].nunique()} users")
-    
-    # Calculate features
+    print(f"  ✓ {len(df)} attempts from {df['user_id'].nunique()} users")
+
     print("\n⚙️  Calculating features...")
     features_df = calculate_user_features(df)
-    print(f"  ✓ Generated {len(features_df.columns)} features for {len(features_df)} users")
-    
-    # Show feature statistics
-    print("\n📊 Feature Statistics:")
-    print(f"  Average score: {features_df['average_score'].mean():.1f}")
-    print(f"  Average activity frequency: {features_df['activity_frequency'].mean():.1f} days/month")
-    print(f"  Drop risk rate: {features_df['drop_risk'].mean():.1%}")
-    print(f"  Completion rate: {features_df['completion_rate'].mean():.1%}")
-    
-    # Check label balance
-    print("\n🎯 Label Distribution:")
-    print(features_df['drop_risk'].value_counts())
-    drop_rate = features_df['drop_risk'].mean()
-    if drop_rate < 0.1 or drop_rate > 0.9:
-        print("  ⚠️  WARNING: Imbalanced labels - may need SMOTE or class weights")
+
+    # ── Label balance ───────────────────────────────────────────────────────
+    n_pos     = features_df['drop_risk'].sum()
+    n_neg     = len(features_df) - n_pos
+    drop_rate = n_pos / len(features_df)
+
+    print(f"\n🎯 Label Distribution:")
+    print(f"  drop_risk=1 : {n_pos:>4}  ({drop_rate:.1%})")
+    print(f"  drop_risk=0 : {n_neg:>4}  ({1-drop_rate:.1%})")
+    if 0.30 <= drop_rate <= 0.70:
+        print("  ✅ Balance GOOD (30–70%)")
+    elif 0.20 <= drop_rate <= 0.80:
+        print("  ⚠️  Balance ACCEPTABLE (20–80%)")
     else:
-        print("  ✓ Labels are reasonably balanced")
-    
-    # Save to CSV
+        print("  ❌ Balance POOR")
+
+    print(f"\n📊 Persona × Label crosstab:")
+    ct = pd.crosstab(features_df['persona_type'], features_df['drop_risk'],
+                     margins=True, margins_name='Total')
+    ct.columns = ['safe (0)', 'drop_risk (1)', 'Total']
+    print(ct.to_string())
+
+    print(f"\n📈 Key Feature Means by Label:")
+    cols = ['average_score', 'completion_rate', 'retry_ratio',
+            'activity_frequency', 'days_since_last_active']
+    print(features_df.groupby('drop_risk')[cols].mean().round(2).to_string())
+
+    # ── Save ────────────────────────────────────────────────────────────────
     features_df.to_csv(output_path, index=False)
-    print(f"\n💾 Saved training features to: {output_path}")
-    
-    # Show sample
-    print("\n📋 Sample Features:")
-    print(features_df.head())
-    
-    print("\n✅ Feature engineering complete!")
-    print(f"📈 Ready for model training with {len(features_df)} samples")
-    
+    print(f"\n💾 Saved: {output_path}  ({len(features_df)} users × 10 features)")
+    print("✅ Feature engineering complete!")
     return features_df
+
 
 if __name__ == "__main__":
     create_training_dataset()

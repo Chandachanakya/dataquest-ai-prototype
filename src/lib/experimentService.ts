@@ -241,3 +241,64 @@ export async function shouldUseMlApi(userId: string): Promise<boolean | null> {
 
     return null; // Not in experiment
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 5: Metrics Tracking
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface UserMetricsInput {
+    /** Days since the user last had any recorded activity */
+    daysSinceLastActivity: number;
+    /** Fraction of started quests that were completed (0–1) */
+    completionRate: number;
+    /** Mean score across all quest attempts (0–100) */
+    averageScore: number;
+    /** Number of active sessions in the last 30 days */
+    sessionFrequency: number;
+    /** Total XP earned divided by days active (XP per day) */
+    xpVelocity: number;
+}
+
+/**
+ * Track all 5 primary experiment outcome metrics for a user in one call.
+ *
+ * Metrics tracked:
+ * - `drop_rate`          — 1 if user has been inactive >14 days, else 0
+ * - `completion_rate`    — fraction of started quests completed (0–1)
+ * - `average_score`      — mean quest score (0–100)
+ * - `session_frequency`  — active sessions in last 30 days
+ * - `xp_velocity`        — XP earned per active day
+ *
+ * @param userId          Target user ID
+ * @param metrics         Raw metric values for this snapshot
+ * @param experimentName  Name of the experiment (default: 'ml_vs_heuristic')
+ */
+export async function trackUserMetrics(
+    userId: string,
+    metrics: UserMetricsInput,
+    experimentName: string = 'ml_vs_heuristic'
+): Promise<void> {
+    const dropRate = metrics.daysSinceLastActivity > 14 ? 1 : 0;
+
+    const snapshot: Record<string, number> = {
+        drop_rate: dropRate,
+        completion_rate: metrics.completionRate,
+        average_score: metrics.averageScore,
+        session_frequency: metrics.sessionFrequency,
+        xp_velocity: metrics.xpVelocity,
+    };
+
+    const metaBase = {
+        days_since_last_activity: metrics.daysSinceLastActivity,
+        tracked_at: new Date().toISOString(),
+    };
+
+    // Fire all inserts concurrently
+    const inserts = Object.entries(snapshot).map(([name, value]) =>
+        trackExperimentMetric(userId, name, value, experimentName, metaBase)
+    );
+
+    await Promise.all(inserts);
+
+    console.log(`📊 Tracked ${Object.keys(snapshot).length} metrics for user ${userId}`, snapshot);
+}
