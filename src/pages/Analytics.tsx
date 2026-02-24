@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, TrendingUp, Target, Award, Clock, BarChart3, Loader2, HelpCircle } from "lucide-react";
+import { ArrowLeft, TrendingUp, Target, Award, CheckCircle2, BarChart3, Loader2, HelpCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -38,7 +38,7 @@ const Analytics = () => {
   const [stats, setStats] = useState({
     totalAttempts: 0,
     averageScore: 0,
-    totalTimeSpent: 0,
+    completionRate: 0,
     perfectScores: 0,
     improvementRate: 0,
   });
@@ -87,22 +87,17 @@ const Analytics = () => {
     const completed = userProgress.filter(p => p.completed);
     const totalAttempts = completed.reduce((sum, p) => sum + (p.attempts || 1), 0);
     const averageScore = completed.length > 0
-      ? Math.min(100, completed.reduce((sum, p) => sum + p.score, 0) / completed.length) // Cap at 100%
+      ? Math.min(100, completed.reduce((sum, p) => sum + p.score, 0) / completed.length)
       : 0;
     const perfectScores = completed.filter(p => p.score === 100).length;
 
-    // Get time data from quest_attempts table (completion_time is in seconds)
-    const { data: attemptsData } = await supabase
-      .from('quest_attempts')
-      .select('completion_time')
-      .eq('user_id', user.id)
-      .eq('status', 'completed')
-      .not('completion_time', 'is', null);
+    // Completion rate: completed quests / total quest rows in user_progress
+    // user_progress has one row per quest touched (completed OR attempted)
+    const completionRate = userProgress.length > 0
+      ? (completed.length / userProgress.length) * 100
+      : 0;
 
-    const totalTimeSpent = attemptsData?.reduce((sum, a) => sum + (a.completion_time || 0), 0) || 0;
-    const completedAttemptsCount = attemptsData?.length || completed.length; // Fallback to completed quests count
-
-    // Calculate improvement rate
+    // Calculate improvement rate (recent half vs older half by completion date)
     const sorted = [...completed].sort((a, b) =>
       new Date(a.completed_at || '').getTime() - new Date(b.completed_at || '').getTime()
     );
@@ -114,7 +109,7 @@ const Analytics = () => {
     setStats({
       totalAttempts,
       averageScore,
-      totalTimeSpent, // in seconds
+      completionRate,
       perfectScores,
       improvementRate,
     });
@@ -214,28 +209,27 @@ const Analytics = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="flex items-center gap-2">
-                <CardTitle className="text-sm font-medium">Avg Time per Quest</CardTitle>
+                <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
                 <Tooltip>
                   <TooltipTrigger>
                     <HelpCircle className="h-3 w-3 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p className="text-xs max-w-xs">Average time spent per quest. Tracked from quest start to completion. Helps identify learning efficiency.</p>
+                    <p className="text-xs max-w-xs">Percentage of attempted quests you successfully completed. The primary metric used by the ML model to assess learner engagement.</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">
-                {stats.totalTimeSpent > 0 && completedQuests.length > 0
-                  ? `${Math.floor(stats.totalTimeSpent / completedQuests.length / 60)}m`
-                  : 'N/A'}
+              <div className={`text-3xl font-bold ${stats.completionRate >= 70 ? 'text-success' :
+                  stats.completionRate >= 40 ? 'text-primary' : 'text-destructive'
+                }`}>
+                {progress.length > 0 ? `${stats.completionRate.toFixed(0)}%` : '—'}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                {stats.totalTimeSpent > 0
-                  ? `${Math.floor(stats.totalTimeSpent / 60)} minutes total`
-                  : 'Complete new quests to track time'}
+              <Progress value={stats.completionRate} className="mt-2" />
+              <p className="text-xs text-muted-foreground mt-1">
+                {completedQuests.length} of {progress.length} quests completed
               </p>
             </CardContent>
           </Card>
