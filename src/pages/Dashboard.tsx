@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import XPBar from "@/components/XPBar";
+import StreakBadge from "@/components/StreakBadge";
 import QuestCard from "@/components/QuestCard";
 import QuestCardSkeleton from "@/components/QuestCardSkeleton";
 import EmptyState from "@/components/EmptyState";
@@ -18,6 +19,8 @@ import { Flame, Trophy, Target, LogOut, Award, BarChart3, MessageSquare, Swords,
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
+import { getStreakStatus, type StreakStatus } from "@/lib/streakService";
+import { syncDifficultyFromServer } from "@/lib/difficultyEngine";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { checkAndActOnLearnerState, getRecommendationsForUser, getDropRiskAnalysis, getOptimalLearningPath, getRecommendedDifficulty, type LearnerState, type QuestRecommendation, type DropRiskAnalysis, type QuestSequence, type DifficultyRecommendation, type StateResult } from "@/lib/learnerEngine";
 import { confettiManager } from "@/lib/confetti";
@@ -43,6 +46,7 @@ const Dashboard = () => {
   // Phase 2: RL Features
   const [learningPath, setLearningPath] = useState<QuestSequence[]>([]);
   const [difficultyRecommendation, setDifficultyRecommendation] = useState<DifficultyRecommendation | null>(null);
+  const [streakStatus, setStreakStatus] = useState<StreakStatus | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -61,6 +65,13 @@ const Dashboard = () => {
 
       // Load completed quests from database
       if (user) {
+        // Load streak status and sync difficulty band from server
+        const [streak] = await Promise.all([
+          getStreakStatus(user.id),
+          syncDifficultyFromServer(user.id),
+        ]);
+        setStreakStatus(streak);
+
         const { data: progressData } = await supabase
           .from('user_progress')
           .select('quest_id')
@@ -69,6 +80,7 @@ const Dashboard = () => {
 
         const completed = progressData?.map(p => p.quest_id) || [];
         setCompletedQuestIds(completed);
+
 
         // Check learner state and trigger personalization
         if (profile) {
@@ -409,6 +421,15 @@ const Dashboard = () => {
                 </Button>
               </div>
               <XPBar currentXP={profile.xp} level={profile.level} />
+              {streakStatus && (
+                <div className="mt-2">
+                  <StreakBadge
+                    userId={user.id}
+                    status={streakStatus}
+                    onFreezeUsed={() => setStreakStatus(s => s ? { ...s, freezeAvailable: false } : s)}
+                  />
+                </div>
+              )}
 
               {/* Mobile Stats */}
               <div className="flex sm:hidden justify-center gap-6 w-full pt-2">

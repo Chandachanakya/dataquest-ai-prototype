@@ -22,10 +22,11 @@ export interface Quest {
   id: string;
   title: string;
   description: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   topic: string;
   xpReward: number;
   type: 'quiz' | 'code' | 'game';
+  objective?: string;          // e.g. "Score ≥ 80% to complete"
   questions?: QuizQuestion[];
   challenge?: CodeChallenge;
 }
@@ -120,8 +121,8 @@ export interface DailyChallenge {
 }
 
 export interface Message {
-    id: string;
-    role: "user" | "assistant";
-    content: string;
-    timestamp: Date;
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
 }

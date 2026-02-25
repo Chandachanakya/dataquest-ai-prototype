@@ -376,6 +376,7 @@ export async function determineLearnerState(userId: string): Promise<StateResult
  * Log decision to decision_logs table
  * PHASE 4: Now includes decision source (ML vs heuristic) for A/B testing
  * PHASE 5: Includes experiment group assignment
+ * PHASE 6: Includes intervention fields (dropout_probability, intervention_case, intervention_accepted)
  */
 async function logDecision(
     userId: string,
@@ -394,8 +395,12 @@ async function logDecision(
         confidence_score: confidenceScore,
         metadata: {
             ...metadata,
-            ml_api_status: getMLApiStatus(), // Track ML API availability
-            experiment_group: experimentGroup // Track A/B test group
+            ml_api_status: getMLApiStatus(),       // Track ML API availability
+            experiment_group: experimentGroup,      // Track A/B test group
+            // Intervention fields (populated when triggered via POST /predict-drop-risk)
+            dropout_probability: metadata.dropout_probability ?? null,
+            intervention_case: metadata.intervention_case ?? null,
+            intervention_accepted: metadata.intervention_accepted ?? null,
         },
         timestamp: new Date().toISOString()
     });

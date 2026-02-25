@@ -8,6 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import joblib
 from datetime import datetime
 import os
+import sys
+
+# ── Ensure the api/ directory is on sys.path so local imports (schemas, inference)
+#    resolve to the right files regardless of where uvicorn is launched from.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import schemas and inference logic from dedicated modules
 from schemas import (

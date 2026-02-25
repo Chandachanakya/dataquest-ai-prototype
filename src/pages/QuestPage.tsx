@@ -10,41 +10,59 @@ import { Quest } from "@/lib/types";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { CongratulationsModal } from "@/components/CongratulationsModal";
+import InterventionBanner from "@/components/InterventionBanner";
+import { checkAndUpdateStreak } from "@/lib/streakService";
+import {
+  evaluatePerformance,
+  getNextDifficulty,
+  scaledXP,
+  getUserDifficulty,
+  saveUserDifficulty,
+  type DifficultyBand,
+  type DifficultyVerdict,
+} from "@/lib/difficultyEngine";
+import {
+  classifyIntervention,
+  buildIntervention,
+  fetchUserMetricsForIntervention,
+  type InterventionPayload,
+} from "@/lib/interventionEngine";
+import { predictDropRisk } from "@/lib/mlApiClient";
 
 const QuestPage = () => {
   const { questId } = useParams<{ questId: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const {
-    profile,
-    loading: profileLoading,
-    updateProfile,
-    updateStreak,
-    addXP,
-  } = useProfile();
+  const { profile, loading: profileLoading, updateProfile, addXP } = useProfile();
+
   const [quest, setQuest] = useState<Quest | null>(null);
   const [questLoading, setQuestLoading] = useState(true);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+
+  // Post-completion state
   const [showCongratulations, setShowCongratulations] = useState(false);
   const [xpEarned, setXpEarned] = useState(0);
   const [isPerfectScore, setIsPerfectScore] = useState(false);
-  const [attemptId, setAttemptId] = useState<string | null>(null);
-  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [difficultyVerdict, setDifficultyVerdict] = useState<DifficultyVerdict>("maintain");
+  const [nextDifficulty, setNextDifficulty] = useState<DifficultyBand>("beginner");
+
+  // Intervention state
+  const [intervention, setIntervention] = useState<InterventionPayload | null>(null);
+  const [dropoutProb, setDropoutProb] = useState(0);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/signin');
-      return;
-    }
+    if (!authLoading && !user) navigate('/signin');
   }, [user, authLoading, navigate]);
 
+  // Load quest
   useEffect(() => {
-    // Load quest data
     fetch('/data/sampleQuests.json')
       .then(res => res.json())
       .then((data: Quest[]) => {
-        const foundQuest = data.find(q => q.id === questId);
-        if (foundQuest) {
-          setQuest(foundQuest);
+        const found = data.find(q => q.id === questId);
+        if (found) {
+          setQuest(found);
         } else {
           toast.error("Quest not found");
           navigate('/dashboard');
@@ -57,94 +75,120 @@ const QuestPage = () => {
       });
   }, [questId, navigate]);
 
-  // Track quest start time and create attempt record
+  // Create attempt record once quest + user are ready
   useEffect(() => {
-    const createAttempt = async () => {
+    const create = async () => {
       if (!quest || !user || attemptId) return;
-
       const now = new Date();
       setStartTime(now);
-
       const { data, error } = await supabase
         .from('quest_attempts')
-        .insert({
-          user_id: user.id,
-          quest_id: quest.id,
-          started_at: now.toISOString(),
-          status: 'started'
-        })
+        .insert({ user_id: user.id, quest_id: quest.id, started_at: now.toISOString(), status: 'started' })
         .select('id')
         .single();
-
-      if (error) {
-        console.error('Failed to create quest attempt:', error);
-      } else if (data) {
-        setAttemptId(data.id);
-      }
+      if (!error && data) setAttemptId(data.id);
     };
-
-    createAttempt();
+    create();
   }, [quest, user, attemptId]);
 
   const handleQuestComplete = async (score: number) => {
     if (!quest || !user || !profile) return;
 
     const totalQuestions = quest.questions?.length || 1;
-    // Cap score percentage at 100% to prevent bugs from showing >100%
     const scorePercentage = Math.min(1.0, score / totalQuestions);
-    const xpEarnedValue = Math.round(quest.xpReward * scorePercentage);
-    const perfectScore = scorePercentage === 1;
+    const accuracyPct = scorePercentage * 100;
+    const perfectScore = scorePercentage === 1.0;
 
-    setXpEarned(xpEarnedValue);
+    // ── Adaptive difficulty ──────────────────────────────────────
+    const currentBand = getUserDifficulty(user.id);
+    const verdict = evaluatePerformance(accuracyPct);
+    const newBand = getNextDifficulty(currentBand, verdict);
+    saveUserDifficulty(user.id, newBand);
+    setDifficultyVerdict(verdict);
+    setNextDifficulty(newBand);
+
+    // ── XP with difficulty scaling ───────────────────────────────
+    const baseXP = Math.round(quest.xpReward * scorePercentage);
+    const finalXP = scaledXP(baseXP, newBand);
+    setXpEarned(finalXP);
     setIsPerfectScore(perfectScore);
 
-    // Calculate completion time
+    // ── Record quest_attempts ────────────────────────────────────
     const completedAt = new Date();
-    const completionTimeSeconds = startTime
+    const completionTimeSec = startTime
       ? Math.round((completedAt.getTime() - startTime.getTime()) / 1000)
       : null;
 
-    // Update quest_attempts table
     if (attemptId) {
       await supabase
         .from('quest_attempts')
         .update({
           completed_at: completedAt.toISOString(),
-          score: Math.round(scorePercentage * 100),
-          completion_time: completionTimeSeconds,
-          status: 'completed'
+          score: Math.round(accuracyPct),
+          completion_time: completionTimeSec,
+          status: 'completed',
         })
         .eq('id', attemptId);
     }
 
-    await addXP(xpEarnedValue);
-    await updateStreak();
+    // ── XP + streak ──────────────────────────────────────────────
+    await addXP(finalXP);
+    await checkAndUpdateStreak(user.id);  // service-level streak (milestone XP awards)
 
+    // ── Badges ───────────────────────────────────────────────────
     const badges = [...(profile.badges || [])];
-    if (profile.completed_quests === 0 && !badges.includes("First Quest")) {
-      badges.push("First Quest");
-    }
-    if (scorePercentage === 1 && !badges.includes("Perfect Score")) {
-      badges.push("Perfect Score");
-    }
+    if (profile.completed_quests === 0 && !badges.includes("First Quest")) badges.push("First Quest");
+    if (perfectScore && !badges.includes("Perfect Score")) badges.push("Perfect Score");
+    if (newBand === 'expert' && !badges.includes("Expert Unlocked")) badges.push("Expert Unlocked");
 
-    await updateProfile({
-      completed_quests: profile.completed_quests + 1,
-      badges,
-    });
+    await updateProfile({ completed_quests: profile.completed_quests + 1, badges });
 
+    // ── user_progress upsert ─────────────────────────────────────
     await supabase.from('user_progress').upsert(
       {
         user_id: user.id,
         quest_id: quest.id,
         completed: true,
-        score: Math.round(scorePercentage * 100),
-        xp_earned: xpEarnedValue,
+        score: Math.round(accuracyPct),
+        xp_earned: finalXP,
         attempts: 1,
         completed_at: completedAt.toISOString(),
       },
       { onConflict: 'user_id,quest_id' }
     );
+
+    // ── ML dropout prediction → intervention ─────────────────────
+    try {
+      const metrics = await fetchUserMetricsForIntervention(user.id);
+      const daysSince = 0; // just completed, so 0 days since active
+      const mlResult = await predictDropRisk(user.id, {
+        days_since_last_active: daysSince,
+        activity_frequency: metrics.recentXPVelocity,
+        average_score: accuracyPct,
+        total_attempts: profile.completed_quests + 1,
+        completion_time_vs_median: completionTimeSec
+          ? completionTimeSec / 300 : 1.0,
+        retry_ratio: 1.0,
+        score_variance: 0,
+        recent_xp_velocity: metrics.recentXPVelocity,
+        completion_rate: metrics.completionRate,
+        avg_difficulty: 2,
+      });
+
+      if (mlResult) {
+        const prob = mlResult.probability;
+        setDropoutProb(prob);
+        metrics.dropoutProbability = prob;
+        const interventionCase = classifyIntervention(metrics);
+        if (interventionCase) {
+          const xpForNext = (profile.level ?? 1) * 200;
+          const currentXP = (profile.xp ?? 0) + finalXP;
+          setIntervention(buildIntervention(interventionCase, currentXP % xpForNext, xpForNext));
+        }
+      }
+    } catch {
+      // Intervention is best-effort — never block the completion flow
+    }
 
     setShowCongratulations(true);
   };
@@ -195,27 +239,15 @@ const QuestPage = () => {
           </div>
 
           {quest.type === 'quiz' && quest.questions && (
-            <QuizView
-              questions={quest.questions}
-              onComplete={handleQuestComplete}
-            />
+            <QuizView questions={quest.questions} onComplete={handleQuestComplete} />
           )}
-
           {quest.type === 'code' && quest.challenge && (
-            <CodeEditor
-              challenge={quest.challenge}
-              onComplete={(success) => handleQuestComplete(success ? 1 : 0)}
-            />
+            <CodeEditor challenge={quest.challenge} onComplete={(success) => handleQuestComplete(success ? 1 : 0)} />
           )}
-
           {quest.type === 'game' && (
             <div className="text-center p-12 bg-secondary/30 rounded-xl border-2 border-dashed border-border">
-              <p className="text-lg text-muted-foreground mb-4">
-                Mini-game placeholder - Canvas-based game would go here
-              </p>
-              <Button variant="default" onClick={() => handleQuestComplete(1)}>
-                Complete Game Quest
-              </Button>
+              <p className="text-lg text-muted-foreground mb-4">Mini-game — Canvas-based game would go here</p>
+              <Button variant="default" onClick={() => handleQuestComplete(1)}>Complete Game Quest</Button>
             </div>
           )}
         </div>
@@ -223,13 +255,23 @@ const QuestPage = () => {
 
       <CongratulationsModal
         open={showCongratulations}
-        onClose={() => {
-          setShowCongratulations(false);
-          navigate('/dashboard');
-        }}
+        onClose={() => { setShowCongratulations(false); navigate('/dashboard'); }}
         xpEarned={xpEarned}
         isPerfectScore={isPerfectScore}
         questTitle={quest.title}
+        difficultyVerdict={difficultyVerdict}
+        nextDifficulty={nextDifficulty}
+        interventionSlot={
+          intervention && user ? (
+            <InterventionBanner
+              userId={user.id}
+              dropoutProbability={dropoutProb}
+              payload={intervention}
+              onAccept={() => { setIntervention(null); navigate('/dashboard'); }}
+              onDismiss={() => setIntervention(null)}
+            />
+          ) : null
+        }
       />
     </div>
   );

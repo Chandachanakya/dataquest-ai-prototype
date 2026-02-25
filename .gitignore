@@ -32,3 +32,6 @@ supabase/
 .env
 .env.local
 .env.production
+
+# Project docs
+docs/

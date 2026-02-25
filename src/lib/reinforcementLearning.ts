@@ -20,7 +20,7 @@ export interface InterventionArm {
 }
 
 export interface DifficultyRecommendation {
-    level: 'beginner' | 'intermediate' | 'advanced';
+    level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
     confidence: number;
     reason: string;
     recentPerformance: {
@@ -28,7 +28,11 @@ export interface DifficultyRecommendation {
         avgScore: number;
         trend: 'improving' | 'stable' | 'declining';
     };
+    successRate: number;
+    avgScore: number;
+    trend: 'improving' | 'stable' | 'declining';
 }
+
 
 // Helper: Calculate Q-value for a quest
 function calculateQValue(
@@ -169,11 +173,10 @@ export async function getAdaptiveDifficultyLevel(
                 level: 'beginner',
                 confidence: 0.5,
                 reason: 'Not enough data yet. Starting with beginner level.',
-                recentPerformance: {
-                    successRate: 0,
-                    avgScore: 0,
-                    trend: 'stable'
-                }
+                recentPerformance: { successRate: 0, avgScore: 0, trend: 'stable' },
+                successRate: 0,
+                avgScore: 0,
+                trend: 'stable',
             };
         }
 
@@ -191,7 +194,7 @@ export async function getAdaptiveDifficultyLevel(
                 recentAvg < olderAvg - 5 ? 'declining' : 'stable';
 
         // Determine difficulty level
-        let level: 'beginner' | 'intermediate' | 'advanced';
+        let level: 'beginner' | 'intermediate' | 'advanced' | 'expert';
         let reason: string;
         let confidence: number;
 
@@ -226,11 +229,10 @@ export async function getAdaptiveDifficultyLevel(
             level,
             confidence,
             reason,
-            recentPerformance: {
-                successRate,
-                avgScore,
-                trend
-            }
+            recentPerformance: { successRate, avgScore, trend },
+            successRate,
+            avgScore,
+            trend,
         };
 
     } catch (error) {
@@ -239,14 +241,14 @@ export async function getAdaptiveDifficultyLevel(
             level: 'intermediate',
             confidence: 0.5,
             reason: 'Error calculating difficulty. Using default.',
-            recentPerformance: {
-                successRate: 0,
-                avgScore: 0,
-                trend: 'stable'
-            }
+            recentPerformance: { successRate: 0, avgScore: 0, trend: 'stable' },
+            successRate: 0,
+            avgScore: 0,
+            trend: 'stable',
         };
     }
 }
+
 
 // 3. Multi-Armed Bandits (Thompson Sampling)
 const INTERVENTION_ARMS: InterventionArm[] = [
