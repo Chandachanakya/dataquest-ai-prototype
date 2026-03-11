@@ -43,6 +43,7 @@ app.add_middleware(
         "http://localhost:5173",   # Vite default
         "http://localhost:3000",   # React default
         "http://localhost:8080",   # Current dev server
+        "https://dataquest-ai-frontend.onrender.com", # Production frontend
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -53,21 +54,22 @@ app.add_middleware(
 # Model Loading
 # ─────────────────────────────────────────────────────────────────────────────
 
-MODEL_DIR = "../ml_pipeline/models"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, "..", "ml_pipeline", "models")
 
 try:
     drop_risk_model = joblib.load(f"{MODEL_DIR}/drop_risk_rf_v1.pkl")
     MODEL_VERSION = "random_forest_v1"
     USE_REAL_MODEL = True
-    print("✅ Loaded trained Random Forest model")
+    print("[OK] Loaded trained Random Forest model")
 except FileNotFoundError:
     try:
         drop_risk_model = joblib.load(f"{MODEL_DIR}/drop_risk_lr_v1.pkl")
         MODEL_VERSION = "logistic_regression_v1"
         USE_REAL_MODEL = True
-        print("✅ Loaded trained Logistic Regression model")
+        print("[OK] Loaded trained Logistic Regression model")
     except FileNotFoundError:
-        print("⚠️  WARNING: No trained models found. Using mock predictions.")
+        print("[WARNING] No trained models found. Using mock predictions.")
         drop_risk_model = None
         MODEL_VERSION = "mock_v1"
         USE_REAL_MODEL = False

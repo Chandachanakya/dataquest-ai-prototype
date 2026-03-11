@@ -1,545 +1,333 @@
-# DataQuest AI - Complete Development Status
+# DataQuest AI — Development Status
 
-**Last Updated:** 2026-02-23  
-**Project Status:** ✅ Production Ready with ML Integration + Full Evaluation & Reporting
+**Last Updated:** 2026-02-25  
+**Project Status:** ✅ Production Ready — Phases 1–7 Complete
 
 ---
 
 ## 📋 Executive Summary
 
-DataQuest AI is an adaptive learning platform that uses machine learning to personalize the learning experience. The system has successfully migrated from heuristic-based personalization to data-driven ML predictions, with A/B testing infrastructure in place to measure effectiveness.
+DataQuest AI is an adaptive learning platform that uses machine learning to personalise the learning experience. The system has progressed through seven phases: from raw data generation and model training, through API deployment, A/B testing infrastructure, and real-time ML predictions, to a fully integrated gamification loop, dropout-triggered intervention engine, and adaptive quiz difficulty system.
 
 **Current State:**
-- ✅ Full-stack application operational
-- ✅ ML models trained and deployed
-- ✅ A/B testing infrastructure live
-- ✅ Real ML predictions in production
-- ✅ User progress isolation fixed
+- ✅ Full-stack React + FastAPI application operational
+- ✅ ML models trained, evaluated, and deployed (Random Forest ROC-AUC: 1.00 on hold-out)
+- ✅ A/B testing infrastructure live (50/50 control/treatment)
+- ✅ Real ML dropout predictions in production (treatment group)
+- ✅ Progressive XP/Level system with streak tracking
+- ✅ Real-time intervention engine (dropout prob ≥ 0.70 → adaptive suggestions)
+- ✅ Four-band adaptive difficulty system (Beginner → Expert, 1×–2× XP)
 
 ---
 
-## 🎯 Project Phases Overview
+## 🎯 Phase Overview
 
 ### Phase 1: Data Pipeline ✅ COMPLETE
 **Goal:** Generate training data and engineer features for ML models
 
-**Achievements:**
 - Generated 622 realistic quest attempts from 150 simulated users
-- Created 4 user personas: fast_learner, struggling, consistent, drop_risk
-- Engineered 10 behavioral features for ML training
-- Prepared 117 user samples with complete feature sets
+- Created 4 user personas: `fast_learner`, `struggling`, `consistent`, `drop_risk`
+- Engineered 10 behavioural features
+- Prepared 118 user samples with complete feature sets
 
-**Key Files:**
-- `ml_pipeline/generate_training_data.py` - Data generation script
-- `ml_pipeline/engineer_features.py` - Feature engineering pipeline
-- `ml_pipeline/data/quest_attempts.csv` - Raw training data (622 attempts)
-- `ml_pipeline/data/training_features.csv` - Engineered features (117 users)
+**10 Features Engineered:**
 
-**Features Engineered:**
-1. `days_since_last_active` - Drop risk indicator
-2. `activity_frequency` - Engagement metric (active days/month)
-3. `average_score` - Performance normalized by difficulty
-4. `total_attempts` - Activity level
-5. `completion_time_vs_median` - Speed metric
-6. `retry_ratio` - Persistence metric
-7. `score_variance` - Consistency metric
-8. `recent_xp_velocity` - Recent engagement (XP/day)
-9. `completion_rate` - Success rate percentage
-10. `avg_difficulty` - Challenge level attempted
+| # | Feature | Description |
+|---|---------|-------------|
+| 1 | `days_since_last_active` | Drop risk indicator |
+| 2 | `activity_frequency` | Engagement metric (active days/month) |
+| 3 | `average_score` | Performance normalised by difficulty |
+| 4 | `total_attempts` | Activity level |
+| 5 | `completion_time_vs_median` | Speed relative to median |
+| 6 | `retry_ratio` | Persistence |
+| 7 | `score_variance` | Consistency |
+| 8 | `recent_xp_velocity` | XP/day (recent engagement) |
+| 9 | `completion_rate` | Success rate % |
+| 10 | `avg_difficulty` | Challenge level attempted |
+
+**Key Files:** `ml_pipeline/generate_training_data.py`, `ml_pipeline/engineer_features.py`, `ml_pipeline/data/`
 
 ---
 
 ### Phase 2: Model Training ✅ COMPLETE
 **Goal:** Train ML models for drop risk prediction
 
-**Models Trained:**
-1. **Logistic Regression** (Baseline)
-   - Simple, interpretable model
-   - Saved as: `ml_pipeline/models/drop_risk_lr_v1.pkl`
-   
-2. **Random Forest** (Primary)
-   - Ensemble model with better performance
-   - Saved as: `ml_pipeline/models/drop_risk_rf_v1.pkl`
+**Models:**
+- **Logistic Regression** (Baseline) → `ml_pipeline/models/drop_risk_lr_v1.pkl`
+- **Random Forest** (Primary) → `ml_pipeline/models/drop_risk_rf_v1.pkl`
 
-**Training Configuration:**
-- Dataset: 117 users, 10 features
-- Train/Test Split: 80/20
-- Cross-Validation: 3-fold (adjusted for small dataset)
-- Class Balancing: Applied to handle imbalanced labels
+**Latest Evaluation Results** *(from `ml_pipeline/evaluate.py`, run 2026-02-25)*:
 
-**Evaluation Metrics:**
-- ROC-AUC: Area under ROC curve
-- F1 Score: Harmonic mean of precision/recall
-- Precision: Accuracy of positive predictions
-- Recall: Coverage of actual positives
+| Metric | Logistic Regression | Random Forest |
+|--------|:-------------------:|:-------------:|
+| ROC-AUC (CV) | 0.9671 ± 0.019 | **0.9913 ± 0.008** |
+| F1 (CV) | 0.900 ± 0.068 | **0.941 ± 0.054** |
+| Precision (CV) | 0.921 | **0.971** |
+| Recall (CV) | 0.886 | **0.914** |
+| ROC-AUC (hold-out) | 0.966 | **1.000** |
+| F1 (hold-out) | 0.800 | **0.933** |
+| Accuracy (hold-out) | 87.5% | **95.8%** |
+| Brier Score | 0.083 | **0.032** |
 
-**Feature Importance (Top 3):**
-1. `days_since_last_active` - Primary drop risk indicator
-2. `activity_frequency` - Strong engagement signal
-3. `recent_xp_velocity` - Recent activity trend
+*Dataset: 118 users · 5-fold stratified CV · 80/20 hold-out split*
 
-**Key Files:**
-- `ml_pipeline/train_models.py` - Training pipeline
-- `ml_pipeline/models/drop_risk_rf_v1.pkl` - Random Forest model
-- `ml_pipeline/models/drop_risk_lr_v1.pkl` - Logistic Regression model
-- `ml_pipeline/models/training_summary.txt` - Training results
-- `ml_pipeline/models/feature_importance_*.csv` - Feature analysis
+**Top Feature Importance (Random Forest):**
+1. `completion_time_vs_median` — 34.6%
+2. `recent_xp_velocity` — 23.9%
+3. `average_score` — 8.4%
+
+**Key Files:** `ml_pipeline/train_models.py`, `ml_pipeline/evaluate.py`, `ml_pipeline/models/evaluation_report.txt`
 
 ---
 
 ### Phase 3: FastAPI Microservice ✅ COMPLETE
 **Goal:** Deploy ML models as a REST API
 
-**API Endpoints:**
-- `GET /` - Health check (shows model version)
-- `POST /predict/drop-risk` - Drop risk prediction
-- `POST /predict/intervention` - Intervention recommendation
-- `POST /recommend/next-quest` - Quest sequencing
+**Endpoints:**
+- `GET /` — Health check (shows model version + `using_real_model`)
+- `POST /predict/drop-risk` — Dropout probability prediction
+- `POST /predict/intervention` — Intervention recommendation
+- `POST /recommend/next-quest` — Quest sequencing
 
-**Model Loading:**
-- Primary: Random Forest (`random_forest_v1`)
-- Fallback: Logistic Regression (`logistic_regression_v1`)
-- Graceful degradation to mock predictions if models unavailable
+**Architecture:**
+- Primary model: Random Forest (`random_forest_v1`)
+- Fallback: Logistic Regression → then mock predictions
+- `api/main.py` now includes `sys.path.insert(0, dirname(__file__))` so `schemas` and `inference` always resolve to local files regardless of launch directory
 
-**CORS Configuration:**
-- Allows: `localhost:5173`, `localhost:3000`, `localhost:8080`
-- Supports credentials and all methods
-
-**Deployment Status:**
-- ✅ Running on http://localhost:8000
-- ✅ Auto-reload enabled for development
-- ✅ Trained models loaded successfully
-- ✅ Real predictions operational
-
-**Example Prediction:**
-```json
-{
-  "user_id": "dbd2efc2-58e8-4842-940e-7b9bfaa292ff",
-  "probability": 0.7358,
-  "risk_level": "high",
-  "model_version": "random_forest_v1",
-  "features_used": {
-    "days_since_last_active": 3.39,
-    "activity_frequency": 0.3,
-    "average_score": 91.6,
-    "total_attempts": 9,
-    ...
-  }
-}
+**How to run (from project root):**
+```bash
+python -m uvicorn api.main:app --port 8000 --reload
 ```
 
-**Key Files:**
-- `api/main.py` - FastAPI application
-- `api/requirements.txt` - Python dependencies
+**Key Files:** `api/main.py`, `api/schemas.py`, `api/inference.py`, `api/requirements.txt`
 
 ---
 
 ### Phase 4: TypeScript Integration ✅ COMPLETE
-**Goal:** Integrate ML API with frontend application
+**Goal:** Integrate ML API with frontend
 
-**Integration Points:**
-1. **ML API Client** (`src/lib/mlApiClient.ts`)
-   - Handles API communication
-   - Graceful fallback to heuristics
-   - Error handling and retries
+- `src/lib/mlApiClient.ts` — `predictDropRisk()`, graceful fallback to heuristics on connection refused
+- `src/lib/learnerEngine.ts` — A/B routing; logs `dropout_probability`, `intervention_case`, `intervention_accepted` in decision metadata
 
-2. **Learner Engine** (`src/lib/learnerEngine.ts`)
-   - Checks A/B test assignment
-   - Routes to ML or heuristic based on group
-   - Logs experiment group in decisions
-
-**Environment Variables:**
-- `VITE_USE_ML_API=true` - Enable ML API calls
-- `VITE_ML_API_URL=http://localhost:8000` - API endpoint
-
-**Key Files:**
-- `src/lib/mlApiClient.ts` - ML API client
-- `src/lib/learnerEngine.ts` - Decision engine
-- `.env` - Environment configuration
+**Env vars required:**
+```env
+VITE_USE_ML_API=true
+VITE_ML_API_URL=http://localhost:8000
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+```
 
 ---
 
 ### Phase 5: A/B Testing Infrastructure ✅ COMPLETE
-**Goal:** Compare ML vs heuristic personalization
+**Goal:** Compare ML vs heuristic personalisation
 
-**Database Schema:**
-1. **experiment_groups** - User assignments
-   - Tracks which users are in control/treatment
-   - 50/50 random assignment
-   
-2. **experiment_metrics** - Performance tracking
-   - Records outcomes for both groups
-
-**Experiment Design:**
-- **Control Group (50%):** Heuristic-based personalization
-- **Treatment Group (50%):** ML-driven personalization
-- **Assignment:** Deterministic hash-based (stable across sessions)
-
-**Metrics Tracked:**
-- Drop rate (primary)
-- Completion rate
-- Average score
-- Session frequency
-- XP velocity
-
-**Deployment Status:**
-- ✅ Database tables created
-- ✅ RLS policies configured
-- ✅ User assignment working
-- ✅ Both groups operational
-- ✅ ML predictions verified in treatment group
-
-**Key Files:**
-- `supabase/migrations/20260212000000_create_experiment_tables.sql`
-- `src/lib/experimentService.ts` - A/B testing logic
+- **Control (50%):** Heuristic state machine
+- **Treatment (50%):** ML dropout prediction via API
+- Deterministic hash-based assignment (stable across sessions)
+- Tables: `experiment_groups`, `experiment_metrics` (Supabase + RLS)
 
 ---
 
-## 🐛 Bug Fixes
+### Phase 6: Evaluation & Reporting ✅ COMPLETE
+**Goal:** Offline evaluation + research narrative
 
-### User Progress Isolation ✅ FIXED
-**Problem:** User course progress was shared across different users due to non-user-specific localStorage keys.
-
-**Solution:**
-- Updated SQL, ML, and DataViz courses to use user-specific keys
-- Modified `courseProgressUtils.ts` to accept userId parameter
-- Created automatic migration system (`localStorageMigration.ts`)
-- Integrated migration into auth flow
-
-**Files Modified:**
-- `src/pages/courses/SQLCourse.tsx`
-- `src/pages/courses/MachineLearningCourse.tsx`
-- `src/pages/courses/DataVisualizationCourse.tsx`
-- `src/lib/courseProgressUtils.ts`
-- `src/lib/localStorageMigration.ts`
-- `src/hooks/useAuth.tsx`
-
-### CORS Configuration ✅ FIXED
-**Problem:** ML API was blocking requests from frontend (localhost:8080)
-
-**Solution:**
-- Updated `api/main.py` CORS middleware
-- Added `localhost:8080` to allowed origins
-
-### 406 Errors ✅ FIXED
-**Problem:** Experiment tables didn't exist in Supabase
-
-**Solution:**
-- Deployed migration script to create tables
-- Configured RLS policies
+- `ml_pipeline/evaluate.py` — 5-fold CV + hold-out metrics + feature importance + confusion matrices
+- `ml_pipeline/models/evaluation_report.txt` — persisted report
+- `docs/RESEARCH_REPORT.md` — full research narrative
 
 ---
 
-## 📊 Current System Architecture
+### Phase 7: Gamification, Interventions & Adaptive Difficulty ✅ COMPLETE
+**Goal:** Strengthen engagement loop and close the ML→UI feedback loop
+
+#### 7a — Gamification Loop
+| Component | What it does |
+|-----------|-------------|
+| `XPBar.tsx` | Progressive XP scaling: Level N requires N × 200 XP |
+| `streakService.ts` | Daily streak tracking with milestone XP (+100/+200/+500 at 7/14/30 days) and streak freeze (1 per 7-day milestone) — stored in localStorage |
+| `StreakBadge.tsx` | Flame badge with milestone glow + freeze button |
+| `QuestCard.tsx` | Mission framing ("Accept Mission ⚔️"), per-difficulty objective, Expert crown + 2× XP label |
+| `types.ts` | `difficulty` union includes `'expert'`; `Quest` has optional `objective` field |
+
+#### 7b — ML Real-Time Intervention Engine
+| Component | What it does |
+|-----------|-------------|
+| `interventionEngine.ts` | Post-quiz: if dropout prob ≥ 0.70, classifies case and builds payload |
+| `InterventionBanner.tsx` | 3-case adaptive card (2× XP / warm-up / guided mode); Accept/Dismiss logs to `decision_logs` |
+| `CongratulationsModal.tsx` | Accepts `interventionSlot` ReactNode; shows difficulty verdict badge |
+
+**Intervention Cases:**
+
+| Case | Trigger | Response |
+|------|---------|----------|
+| `LOW_XP_VELOCITY` | XP/day < 10 | 2× XP challenge |
+| `SLOW_COMPLETION` | time > 1.8× median | Warm-up quest |
+| `LOW_COMPLETION_RATE` | completion < 40% | Guided mode + hints |
+
+#### 7c — Adaptive Quiz Difficulty
+
+| Band | XP Multiplier | Promote if | Demote if |
+|------|:---:|---|---|
+| Beginner | 1.0× | accuracy ≥ 85% | — |
+| Intermediate | 1.3× | accuracy ≥ 85% | accuracy ≤ 60% |
+| Advanced | 1.6× | ≥ 85% + high server confidence | accuracy ≤ 60% |
+| Expert | **2.0×** | promoted from Advanced | accuracy ≤ 60% |
+
+- `difficultyEngine.ts` — full 4-band logic, localStorage caching, server sync
+- `QuestPage.tsx` — evaluates difficulty after every quiz, scales XP, triggers ML prediction and intervention
+- `reinforcementLearning.ts / DifficultyRecommendation` — updated to include `'expert'` band
+
+---
+
+## 🐛 Bug Fixes & Hotfixes
+
+| Issue | Status | Fix |
+|-------|--------|-----|
+| User progress isolation (shared localStorage keys) | ✅ Fixed | User-specific keys + `localStorageMigration.ts` |
+| CORS blocking frontend→API | ✅ Fixed | Added `localhost:8080` to allowed origins |
+| 406 errors (missing experiment tables) | ✅ Fixed | Deployed Supabase migration |
+| `ImportError: DropRiskRequest` on API startup | ✅ Fixed | `sys.path.insert(0, dirname(__file__))` in `api/main.py` |
+| CongratulationsModal screen blink | ✅ Fixed | Lazy `useState(randomQuote)` initialiser |
+| CongratulationsModal too large | ✅ Fixed | Reduced to `sm:max-w-sm`, smaller trophy/spacing (~20%) |
+| `streak_freeze_available` / `last_active_date` missing from Supabase types | ✅ Fixed | localStorage-only storage for these fields |
+
+---
+
+## 📊 System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend (React + Vite)                  │
-│                    http://localhost:8080                     │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │   Courses    │  │  Dashboard   │  │   Analytics  │     │
-│  └──────────────┘  └──────────────┘  └──────────────┘     │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │         Learner Engine (Decision Logic)              │  │
-│  │  - Checks A/B test assignment                        │  │
-│  │  - Routes to ML or Heuristic                         │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ├─── Control Group (50%)
-                            │    └─→ Heuristic Logic
-                            │
-                            └─── Treatment Group (50%)
-                                 └─→ ML API
-                                     │
-        ┌────────────────────────────┴────────────────────────────┐
-        │            ML API (FastAPI)                             │
-        │           http://localhost:8000                         │
-        │                                                         │
-        │  ┌──────────────────────────────────────────────────┐ │
-        │  │  Trained Models                                   │ │
-        │  │  - Random Forest (primary)                        │ │
-        │  │  - Logistic Regression (fallback)                 │ │
-        │  └──────────────────────────────────────────────────┘ │
-        └─────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-        ┌─────────────────────────────────────────────────────────┐
-        │              Supabase (PostgreSQL)                      │
-        │                                                         │
-        │  - User profiles                                        │
-        │  - Quest attempts                                       │
-        │  - Experiment groups                                    │
-        │  - Experiment metrics                                   │
-        └─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                     Frontend (React + Vite)                       │
+│                      http://localhost:8080                        │
+│                                                                   │
+│  Dashboard   QuestPage   Analytics   Courses   CongratModal      │
+│      │           │                                  ↑            │
+│      ▼           ▼                                  │            │
+│  LearnerEngine ──→ A/B split ──→ ML API or Heuristic│            │
+│  streakService    difficultyEngine   interventionEngine          │
+│  XPBar  StreakBadge  QuestCard  InterventionBanner               │
+└──────────────────────────────────────────────────────────────────┘
+                        │                    │
+              Control (50%)         Treatment (50%)
+              Heuristic logic       ↓
+                                ML API (FastAPI)
+                                http://localhost:8000
+                                  Random Forest (primary)
+                                  Logistic Regression (fallback)
+                        │
+                        ▼
+                 Supabase (PostgreSQL)
+                 profiles · quest_attempts · user_progress
+                 experiment_groups · experiment_metrics · decision_logs
 ```
 
 ---
 
-## 🧪 Testing & Verification
-
-### Manual Testing Completed ✅
-- ✓ User progress isolation across multiple accounts
-- ✓ A/B test assignment (control/treatment)
-- ✓ ML API predictions for treatment group
-- ✓ Heuristic logic for control group
-- ✓ CORS configuration
-- ✓ Database migrations
-
-### Test Results
-**Control Group User:**
-```
-Using heuristic learner state determination (control group)
-```
-
-**Treatment Group User:**
-```
-✅ ML API drop risk prediction: {
-  user_id: "dbd2efc2-58e8-4842-940e-7b9bfaa292ff",
-  probability: 0.7358,
-  risk_level: "high",
-  model_version: "random_forest_v1"
-}
-```
-
----
-
-## 📁 Project Structure
+## 📁 Key File Structure
 
 ```
 dataquest-ai-prototype/
-├── api/                          # ML API (FastAPI)
-│   ├── main.py                   # API endpoints
-│   └── requirements.txt          # Python dependencies
+├── api/
+│   ├── main.py          # FastAPI app + sys.path fix
+│   ├── schemas.py       # Pydantic request/response models
+│   ├── inference.py     # Model loading + prediction logic
+│   └── requirements.txt
 │
-├── ml_pipeline/                  # ML training pipeline
-│   ├── data/
-│   │   ├── quest_attempts.csv    # Raw training data
-│   │   └── training_features.csv # Engineered features
-│   ├── models/
-│   │   ├── drop_risk_rf_v1.pkl   # Random Forest model
-│   │   ├── drop_risk_lr_v1.pkl   # Logistic Regression model
-│   │   └── training_summary.txt  # Training results
-│   ├── generate_training_data.py # Data generation
-│   ├── engineer_features.py      # Feature engineering
-│   └── train_models.py           # Model training
+├── ml_pipeline/
+│   ├── data/            # training_features.csv (118 users)
+│   ├── models/          # drop_risk_rf_v1.pkl, drop_risk_lr_v1.pkl
+│   ├── evaluate.py      # Offline evaluation (5-fold CV + hold-out)
+│   ├── train_models.py
+│   └── engineer_features.py
 │
-├── src/                          # Frontend (React)
-│   ├── pages/
-│   │   ├── courses/              # Course pages
-│   │   ├── Dashboard.tsx         # Main dashboard
-│   │   └── Courses.tsx           # Course listing
+├── src/
 │   ├── lib/
-│   │   ├── mlApiClient.ts        # ML API client
-│   │   ├── learnerEngine.ts      # Decision logic
-│   │   ├── experimentService.ts  # A/B testing
-│   │   └── localStorageMigration.ts # Data migration
-│   └── hooks/
-│       └── useAuth.tsx           # Authentication
+│   │   ├── mlApiClient.ts         # predictDropRisk()
+│   │   ├── learnerEngine.ts       # A/B routing + logDecision
+│   │   ├── experimentService.ts   # A/B assignment
+│   │   ├── streakService.ts       # [NEW] daily streaks + milestones
+│   │   ├── difficultyEngine.ts    # [NEW] 4-band adaptive difficulty
+│   │   ├── interventionEngine.ts  # [NEW] dropout → intervention payload
+│   │   ├── reinforcementLearning.ts
+│   │   └── types.ts
+│   ├── components/
+│   │   ├── XPBar.tsx              # Progressive XP bar
+│   │   ├── StreakBadge.tsx        # [NEW] streak flame badge
+│   │   ├── InterventionBanner.tsx # [NEW] 3-case intervention card
+│   │   ├── QuestCard.tsx          # Mission framing + expert styling
+│   │   └── CongratulationsModal.tsx # Difficulty badge + intervention slot
+│   └── pages/
+│       ├── Dashboard.tsx          # StreakBadge + difficulty sync
+│       ├── QuestPage.tsx          # Full adaptive quiz logic
+│       └── Analytics.tsx
 │
-├── docs/                         # Documentation
-│   ├── DEVELOPMENT_STATUS.md     # This file
-│   ├── PHASE1_COMPLETE.md        # Phase 1 summary
-│   ├── PHASE2_COMPLETE.md        # Phase 2 summary
-│   ├── MODEL_DEPLOYMENT.md       # Deployment guide
-│   ├── MANUAL_TESTING_GUIDE.md   # Testing instructions
-│   └── LOCALSTORAGE_MIGRATION.md # Migration guide
-│
-├── supabase/
-│   └── migrations/
-│       └── 20260212000000_create_experiment_tables.sql
-│
-├── .env                          # Environment variables
-├── .gitignore                    # Git ignore rules
-└── package.json                  # Node dependencies
+└── docs/
+    └── DEVELOPMENT_STATUS.md     # This file
 ```
 
 ---
 
 ## 🚀 How to Run
 
-### Prerequisites
-- Node.js 18+
-- Python 3.9+
-- Supabase account
-
-### Frontend
 ```bash
-npm install
-npm run dev
-# Runs on http://localhost:8080
+# 1. Frontend
+npm install && npm run dev
+# → http://localhost:8080
+
+# 2. ML API (always from project root)
+python -m uvicorn api.main:app --port 8000 --reload
+# → http://localhost:8000
+
+# 3. Re-evaluate models (optional)
+cd ml_pipeline && python evaluate.py
 ```
-
-### ML API
-```bash
-cd api
-pip install -r requirements.txt
-python -m uvicorn main:app --reload
-# Runs on http://localhost:8000
-```
-
-### Environment Variables
-Create `.env` file:
-```env
-VITE_USE_ML_API=true
-VITE_ML_API_URL=http://localhost:8000
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_anon_key
-```
-
----
-
-## 📈 Performance Metrics
-
-### Model Performance
-- **Dataset Size:** 117 users, 622 quest attempts
-- **Features:** 10 engineered behavioral features
-- **Models:** Logistic Regression + Random Forest
-- **Validation:** 3-fold cross-validation
-
-### System Performance
-- **ML API Response Time:** <100ms
-- **Frontend Load Time:** <2s
-- **Database Queries:** Optimized with indexes
-- **CORS:** Configured for local development
-
----
-
-## 🎯 Next Steps & Roadmap
-
-### Immediate (Week 1-2)
-1. ✅ Monitor ML vs heuristic performance
-2. ✅ Collect real user data
-3. ✅ Analyze A/B test results
-4. ⏳ Gather user feedback
-
-### Short-term (Month 1)
-1. Retrain models with more data (target: 500+ users)
-2. Implement additional features (session duration, time of day)
-3. Add intervention effectiveness tracking
-4. Deploy to staging environment
-
-### Medium-term (Month 2-3)
-1. Implement contextual bandits for interventions
-2. Add quest sequencing ML model
-3. Create admin dashboard for monitoring
-4. Optimize model performance
-
-### Long-term (Month 4+)
-1. Production deployment
-2. Scale to handle 1000+ concurrent users
-3. Implement real-time model updates
-4. Add advanced analytics and reporting
 
 ---
 
 ## 🔧 Troubleshooting
 
-### ML API Not Loading Models
-**Issue:** API shows `using_real_model: false`
-
-**Solution:**
-```bash
-# Check if models exist
-ls ml_pipeline/models/
-
-# Retrain if needed
-cd ml_pipeline
-python train_models.py
-```
-
-### CORS Errors
-**Issue:** Frontend can't reach ML API
-
-**Solution:**
-- Verify ML API is running on port 8000
-- Check CORS configuration in `api/main.py`
-- Ensure frontend is on allowed origin
-
-### User Progress Not Saving
-**Issue:** Progress resets on page reload
-
-**Solution:**
-- Check localStorage in browser DevTools
-- Verify user-specific keys are being used
-- Run migration: `migrateLocalStorageToUserSpecific(userId)`
-
----
-
-## 📚 Documentation
-
-- **Phase 1:** [PHASE1_COMPLETE.md](./PHASE1_COMPLETE.md)
-- **Phase 2:** [PHASE2_COMPLETE.md](./PHASE2_COMPLETE.md)
-- **Deployment:** [MODEL_DEPLOYMENT.md](./MODEL_DEPLOYMENT.md)
-- **Testing:** [MANUAL_TESTING_GUIDE.md](./MANUAL_TESTING_GUIDE.md)
-- **Migration:** [LOCALSTORAGE_MIGRATION.md](./LOCALSTORAGE_MIGRATION.md)
-
----
-
-## 👥 Team & Contact
-
-**Project:** DataQuest AI - Adaptive Learning Platform  
-**Status:** Production Ready with ML Integration  
-**Last Updated:** 2026-02-13
+| Problem | Fix |
+|---------|-----|
+| `ImportError: cannot import name 'DropRiskRequest'` | Run uvicorn from project root: `python -m uvicorn api.main:app ...` |
+| `ERR_CONNECTION_REFUSED` on dashboard | ML API not running — start it (see above). App falls back to heuristics automatically |
+| ML API not loading models | `cd ml_pipeline && python train_models.py` |
+| CORS error | Check frontend origin is in `api/main.py` `allow_origins` list |
 
 ---
 
 ## ✅ Completion Checklist
 
-### Phase 1: Data Pipeline
-- [x] Generate training data (622 attempts)
-- [x] Engineer features (10 features)
-- [x] Prepare dataset (117 users)
-- [x] Validate data quality
+### Phase 1 — Data Pipeline
+- [x] Generate training data · [x] Engineer 10 features · [x] Validate quality
 
-### Phase 2: Model Training
-- [x] Train Logistic Regression
-- [x] Train Random Forest
-- [x] Cross-validation
-- [x] Feature importance analysis
-- [x] Save models
+### Phase 2 — Model Training
+- [x] Logistic Regression · [x] Random Forest · [x] 5-fold CV · [x] Feature importance
 
-### Phase 3: API Deployment
-- [x] Create FastAPI service
-- [x] Load trained models
-- [x] Configure CORS
-- [x] Test endpoints
+### Phase 3 — API Deployment
+- [x] FastAPI service · [x] Load models · [x] CORS · [x] sys.path fix
 
-### Phase 4: Frontend Integration
-- [x] Create ML API client
-- [x] Update learner engine
-- [x] Environment configuration
-- [x] Error handling
+### Phase 4 — Frontend Integration
+- [x] ML API client · [x] Learner engine routing · [x] Fallback handling
 
-### Phase 5: A/B Testing
-- [x] Create database schema
-- [x] Implement user assignment
-- [x] Deploy to Supabase
-- [x] Verify both groups working
+### Phase 5 — A/B Testing
+- [x] DB schema · [x] User assignment · [x] Both groups operational
 
-### Bug Fixes
-- [x] User progress isolation
-- [x] CORS configuration
-- [x] 406 errors (missing tables)
-- [x] localStorage migration
+### Phase 6 — Evaluation & Reporting
+- [x] `evaluate.py` (5-fold CV + hold-out) · [x] Feature importance · [x] Research report
 
-### Documentation
-- [x] Phase summaries
-- [x] Deployment guide
-- [x] Testing guide
-- [x] Development status (this document)
-
-### Phase 6: Evaluation & Reporting
-- [x] Offline evaluation report (`evaluate.py`)
-- [x] Feature importance analysis
-- [x] Research report (`RESEARCH_REPORT.md`)
-- [x] API refactored into `schemas.py` + `inference.py`
-- [x] A/B metrics tracking (`trackUserMetrics()`)
+### Phase 7 — Gamification, Interventions & Adaptive Difficulty
+- [x] Progressive XP bar (level N = N × 200 XP)
+- [x] Daily streak system + milestone XP + freeze
+- [x] StreakBadge UI
+- [x] Quest mission framing ("Accept Mission", objective, Expert styling)
+- [x] 4-band adaptive difficulty (Beginner → Expert)
+- [x] XP scaling per difficulty band (1× → 2×)
+- [x] Intervention engine (dropout ≥ 0.70 → classify → banner)
+- [x] InterventionBanner (3 cases, Accept/Dismiss logging)
+- [x] CongratulationsModal: difficulty verdict badge + intervention slot
+- [x] TypeScript compile: zero errors
 
 ---
 
-**🎉 Project Status: PRODUCTION READY — ALL PHASES COMPLETE**
-
-All phases complete. ML models trained and deployed. A/B testing operational. Full offline evaluation and research documentation produced. System ready for real-world usage and data collection.
+**🎉 Project Status: PRODUCTION READY — ALL 7 PHASES COMPLETE**
