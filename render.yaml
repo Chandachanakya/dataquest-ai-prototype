@@ -12,11 +12,11 @@ services:
         value: ml_pipeline/models
 
   # React Frontend (Vite)
-  - type: static
+  - type: web
     name: dataquest-ai-frontend
-    env: static
+    runtime: static
     buildCommand: npm run build
-    publishPath: dist
+    staticPublishPath: dist
     routes:
       # Support for Single Page Application (SPA) routing
       - type: rewrite
