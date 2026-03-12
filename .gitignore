@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 # Supabase
-supabase/
+backend/supabase/
 *.sql
 !manual_deployment.sql
 
