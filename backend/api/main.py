@@ -37,14 +37,22 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Get allowed origins from environment variable or use defaults
+allowed_origins = [
+    "http://localhost:5173",   # Vite default
+    "http://localhost:3000",   # React default
+    "http://localhost:8080",   # Current dev server
+    "https://dataquest-ai-frontend.onrender.com", # Legacy Render frontend
+]
+
+# Add Vercel URL if provided in environment
+frontend_url = os.getenv("ALLOWED_ORIGIN")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",   # Vite default
-        "http://localhost:3000",   # React default
-        "http://localhost:8080",   # Current dev server
-        "https://dataquest-ai-frontend.onrender.com", # Production frontend
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
