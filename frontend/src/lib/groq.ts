@@ -2,8 +2,10 @@
 import Groq from 'groq-sdk';
 import { Message } from './types';
 
+import { GROQ_API_KEY } from '@/api/config';
+
 const groq = new Groq({
-  apiKey: import.meta.env.VITE_GROQ_API_KEY,
+  apiKey: GROQ_API_KEY,
   dangerouslyAllowBrowser: true,
 });
 

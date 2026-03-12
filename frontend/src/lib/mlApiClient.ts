@@ -5,9 +5,7 @@
  * Provides graceful fallback to heuristic logic if API is unavailable.
  */
 
-// Feature flag - controlled via environment variable
-const USE_ML_API = import.meta.env.VITE_USE_ML_API === 'true';
-const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:8000';
+import { ML_API_URL, USE_ML_API } from "@/api/config";
 
 // Types matching API responses
 export interface MLDropRiskResponse {
