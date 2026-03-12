@@ -42,7 +42,7 @@ allowed_origins = [
     "http://localhost:5173",   # Vite default
     "http://localhost:3000",   # React default
     "http://localhost:8080",   # Current dev server
-    "https://dataquest-ai-prototype-8vg0ct9ko-chanakyas-projects-979b2cd5.vercel.app", # Legacy Render frontend
+    "https://dataquest-ai-prototype.vercel.app", # Vercel frontend
 ]
 
 # Add Vercel URL if provided in environment
