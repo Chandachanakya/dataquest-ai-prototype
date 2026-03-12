@@ -35,3 +35,6 @@ supabase/
 
 # Project docs
 docs/
+
+# Python venv
+backend/venv/
