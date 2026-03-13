@@ -15,7 +15,6 @@ interface AuthProps {
 
 const Auth = ({ mode }: AuthProps) => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, signUp, signIn } = useAuth();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +22,8 @@ const Auth = ({ mode }: AuthProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false); // New state for confirmation visibility
+  const [resetMode, setResetMode] = useState(false);
+  const { user, loading: authLoading, signUp, signIn, resetPassword } = useAuth();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -97,6 +98,29 @@ const Auth = ({ mode }: AuthProps) => {
     }
   };
 
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      toast.error("Please enter your email");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await resetPassword(email.trim());
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Password reset email sent! Please check your inbox.");
+        setResetMode(false);
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -138,11 +162,15 @@ const Auth = ({ mode }: AuthProps) => {
             DataQuestAI
           </CardTitle>
           <CardDescription className="text-base animate-fade-in-up delay-150">
-            {mode === 'signup' ? 'Create your account to start learning' : 'Welcome back! Sign in to continue'}
+            {resetMode 
+              ? 'Enter your email to receive a reset link' 
+              : mode === 'signup' 
+                ? 'Create your account to start learning' 
+                : 'Welcome back! Sign in to continue'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={resetMode ? handleReset : handleSubmit} className="space-y-5">
             {mode === 'signup' && (
               <div className="space-y-2 animate-fade-in-up delay-200">
                 {/* ... (Username input remains the same) ... */}
@@ -222,6 +250,18 @@ const Auth = ({ mode }: AuthProps) => {
                   )}
                 </button>
               </div>
+              {!resetMode && mode === 'signin' && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setResetMode(true)}
+                    className="text-xs text-primary hover:underline font-medium"
+                    disabled={isSubmitting}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* New "Confirm Password" field for signup */}
@@ -295,26 +335,33 @@ const Auth = ({ mode }: AuthProps) => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {mode === 'signup' ? 'Creating Account...' : 'Signing In...'}
+                  {resetMode ? 'Sending Link...' : mode === 'signup' ? 'Creating Account...' : 'Signing In...'}
                 </>
               ) : (
                 <>
-                  {mode === 'signup' ? 'Create Account' : 'Sign In'}
+                  {resetMode ? 'Send Reset Link' : mode === 'signup' ? 'Create Account' : 'Sign In'}
                 </>
               )}
             </Button>
 
             <div className="text-center text-sm pt-2 animate-fade-in-up delay-700">
-              {/* ... (Switch mode button remains the same) ... */}
                 <button
                 type="button"
-                onClick={() => navigate(mode === 'signup' ? '/signin' : '/signup')}
+                onClick={() => {
+                  if (resetMode) {
+                    setResetMode(false);
+                  } else {
+                    navigate(mode === 'signup' ? '/signin' : '/signup');
+                  }
+                }}
                 className="text-primary hover:underline hover:text-primary/80 transition-colors duration-200 font-medium"
                 disabled={isSubmitting}
               >
-                {mode === 'signup' 
-                  ? 'Already have an account? Sign in' 
-                  : "Don't have an account? Sign up"}
+                {resetMode 
+                  ? 'Back to Sign In' 
+                  : mode === 'signup' 
+                    ? 'Already have an account? Sign in' 
+                    : "Don't have an account? Sign up"}
               </button>
             </div>
           </form>

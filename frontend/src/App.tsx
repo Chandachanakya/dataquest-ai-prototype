@@ -22,6 +22,7 @@ import PythonCourse from "./pages/PythonCourse";
 import MachineLearningCourse from "./pages/MachineLearningCourse";
 import DataVisualizationCourse from "./pages/DataVisualizationCourse";
 import SQLCourse from "./pages/SQLCourse";
+import ResetPassword from "./pages/ResetPassword";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/" element={<Landing />} />
               <Route path="/signin" element={<Auth mode="signin" />} />
               <Route path="/signup" element={<Auth mode="signup" />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/quest/:questId" element={<QuestPage />} />
