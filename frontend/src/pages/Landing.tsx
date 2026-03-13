@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, Trophy, Zap, Brain } from "lucide-react";
 import AnimatedBackground from "@/components/AnimatedBackground";
+import Footer from "@/components/Footer";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -101,24 +102,33 @@ const Landing = () => {
       {/* CTA Section */}
       <section className="py-12 sm:py-16 md:py-20">
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto bg-gradient-hero rounded-2xl p-6 sm:p-8 md:p-12 text-center text-white shadow-glow animate-scale-in hover:shadow-lg transition-shadow duration-300">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 animate-fade-in-up">
+          <div className="max-w-4xl mx-auto glass-cta rounded-3xl p-8 md:p-14 text-center animate-scale-in transition-all duration-500 relative overflow-hidden group">
+            {/* Subtle internal glow decoration */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 blur-[80px] rounded-full group-hover:bg-primary/20 transition-colors duration-700" />
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-accent/10 blur-[80px] rounded-full group-hover:bg-accent/20 transition-colors duration-700" />
+
+            <h2 className="text-3xl md:text-5xl font-bold mb-4 bg-gradient-to-b from-white to-white/70 bg-clip-text text-transparent animate-fade-in-up">
               Ready to Level Up?
             </h2>
-            <p className="text-base sm:text-lg mb-6 sm:mb-8 opacity-90 animate-fade-in-up delay-100">
-              Join our community and start your learning adventure today. No credit card required.
+            <p className="text-lg md:text-xl mb-10 text-muted-foreground/90 max-w-xl mx-auto animate-fade-in-up delay-100">
+              Join thousands of learners mastering data science through AI-powered interactive quests.
             </p>
-            <Button 
-              size="lg" 
-              variant="secondary" 
-              onClick={() => navigate('/signup')}
-              className="bg-white text-primary hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-md"
-            >
-              Get Started Free
-            </Button>
+            <div className="relative inline-block animate-fade-in-up delay-200">
+              <Button 
+                size="xl" 
+                onClick={() => navigate('/signup')}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-[0_20px_50px_-12px_hsl(180_85%_55%/0.4)] hover:shadow-[0_25px_60px_-12px_hsl(180_85%_55%/0.6)]"
+              >
+                Get Started Free
+              </Button>
+              {/* Button shimmer effect hint */}
+              <div className="absolute inset-0 rounded-2xl pointer-events-none border border-white/20" />
+            </div>
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 };
