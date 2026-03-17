@@ -56,6 +56,7 @@ const App = () => (
               <Route path="/courses/data-visualization" element={<DataVisualizationCourse />} />
               <Route path="/courses/machine-learning" element={<MachineLearningCourse />} />
               <Route path="/courses/sql" element={<SQLCourse />} />
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

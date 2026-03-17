@@ -21,15 +21,17 @@ const ResetPassword = () => {
   // If no user is present after loading, they shouldn't be here
   // Note: Supabase automatically handles the recovery session when the link is clicked
   useEffect(() => {
-    if (!authLoading && !user) {
-      toast.error("Invalid or expired reset link");
-      navigate('/signin');
+    if (!authLoading) {
+      if (!user) {
+        toast.error("Invalid or expired reset link");
+        navigate('/signin');
+      }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!password.trim() || !confirmPassword.trim()) {
       toast.error("Please fill in all fields");
       return;
@@ -72,7 +74,7 @@ const ResetPassword = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
       <AnimatedBackground />
-      
+
       <Card className="w-full max-w-md shadow-2xl border-2 border-primary/20 bg-card/95 backdrop-blur-sm relative z-10 animate-fade-in-up">
         <CardHeader className="text-center space-y-2 pb-6">
           <div className="mx-auto mb-2">
@@ -148,11 +150,11 @@ const ResetPassword = () => {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              variant="hero" 
-              className="w-full mt-6" 
-              size="lg" 
+            <Button
+              type="submit"
+              variant="hero"
+              className="w-full mt-6"
+              size="lg"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
