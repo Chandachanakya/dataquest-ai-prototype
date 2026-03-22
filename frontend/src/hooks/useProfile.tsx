@@ -17,6 +17,7 @@ export interface Profile {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   topics: string[];
   last_quest_date?: string | null;
+  role?: 'learner' | 'admin' | string;
 }
 
 export const useProfile = () => {

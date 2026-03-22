@@ -16,6 +16,7 @@ export interface User {
     difficulty: 'beginner' | 'intermediate' | 'advanced';
     topics: string[];
   };
+  role?: 'learner' | 'admin' | string;
   // Impact Measurement fields (Optional to maintain backward compatibility)
   firstActiveDate?: string;
   lastActiveDate?: string;

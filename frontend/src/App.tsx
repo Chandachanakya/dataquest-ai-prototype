@@ -25,6 +25,9 @@ import SQLCourse from "./pages/SQLCourse";
 import ResetPassword from "./pages/ResetPassword";
 import ComingSoon from "./pages/ComingSoon";
 import NotFound from "./pages/NotFound";
+import AdminLogin from "./pages/AdminLogin";
+import { AdminRoute } from "./components/layout/AdminRoute";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +59,14 @@ const App = () => (
               <Route path="/courses/data-visualization" element={<DataVisualizationCourse />} />
               <Route path="/courses/machine-learning" element={<MachineLearningCourse />} />
               <Route path="/courses/sql" element={<SQLCourse />} />
+
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              } />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

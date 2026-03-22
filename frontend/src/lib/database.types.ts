@@ -261,6 +261,7 @@ export type Database = {
           total_active_days: number | null
           retained_after_7_days: boolean | null
           retained_after_14_days: boolean | null
+          role: string | null
         }
         Insert: {
           avatar?: string | null
@@ -284,6 +285,7 @@ export type Database = {
           total_active_days?: number | null
           retained_after_7_days?: boolean | null
           retained_after_14_days?: boolean | null
+          role?: string | null
         }
         Update: {
           avatar?: string | null
@@ -307,6 +309,7 @@ export type Database = {
           total_active_days?: number | null
           retained_after_7_days?: boolean | null
           retained_after_14_days?: boolean | null
+          role?: string | null
         }
         Relationships: []
       }
