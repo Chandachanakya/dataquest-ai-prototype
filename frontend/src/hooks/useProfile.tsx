@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { trackUserSession } from '@/lib/userTracker';
 
 export interface Profile {
   id: string;
@@ -52,6 +53,7 @@ export const useProfile = () => {
   useEffect(() => {
     if (user) {
       fetchProfile();
+      trackUserSession(user.id); // Triggers cohort measurement and 24h trailing data
     } else {
       setProfile(null);
       setLoading(false);

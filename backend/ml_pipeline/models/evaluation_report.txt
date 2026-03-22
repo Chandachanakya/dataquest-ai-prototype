@@ -1,75 +1,75 @@
 ================================================================
 DATAQUEST AI - OFFLINE EVALUATION REPORT
 ================================================================
-Generated  : 2026-03-16 13:53:35
-Dataset    : 118 users, 10 features
-Drop rate  : 29.7%
+Generated  : 2026-03-22 15:41:52
+Dataset    : 749 users, 10 features
+Drop rate  : 32.3%
 
 ================================================================
 CROSS-VALIDATION
 ================================================================
 
 Logistic Regression:
-  roc_auc     : 0.9671 ± 0.0193
-  f1          : 0.9007 ± 0.0677
-  precision   : 0.9214 ± 0.1020
-  recall      : 0.8857 ± 0.0571
-  accuracy    : 0.9402 ± 0.0441
+  roc_auc     : 0.9757 ± 0.0129
+  f1          : 0.8865 ± 0.0355
+  precision   : 0.8546 ± 0.0343
+  recall      : 0.9214 ± 0.0421
+  accuracy    : 0.9238 ± 0.0239
 
 Random Forest:
-  roc_auc     : 0.9913 ± 0.0078
-  f1          : 0.9407 ± 0.0541
-  precision   : 0.9714 ± 0.0571
-  recall      : 0.9143 ± 0.0700
-  accuracy    : 0.9656 ± 0.0324
+  roc_auc     : 0.9819 ± 0.0093
+  f1          : 0.9145 ± 0.0319
+  precision   : 0.9167 ± 0.0240
+  recall      : 0.9129 ± 0.0447
+  accuracy    : 0.9452 ± 0.0197
 
 ================================================================
 HOLD-OUT TEST SET (80/20 split)
 ================================================================
 
 Logistic Regression:
-  roc_auc     : 0.9664
-  f1          : 0.8000
-  precision   : 0.7500
-  recall      : 0.8571
-  accuracy    : 0.8750
-  brier       : 0.0852
+  roc_auc     : 0.9734
+  f1          : 0.8776
+  precision   : 0.8600
+  recall      : 0.8958
+  accuracy    : 0.9200
+  brier       : 0.0602
 
 Random Forest:
-  roc_auc     : 1.0000
-  f1          : 0.9333
+  roc_auc     : 0.9820
+  f1          : 0.8750
   precision   : 0.8750
-  recall      : 1.0000
-  accuracy    : 0.9583
-  brier       : 0.0321
+  recall      : 0.8750
+  accuracy    : 0.9200
+  brier       : 0.0515
 
 ================================================================
 FEATURE IMPORTANCE
 ================================================================
 
 Logistic Regression:
-   1. completion_time_vs_median           1.2005
-   2. activity_frequency                  0.7349
-   3. completion_rate                     0.5785
-   4. total_attempts                      0.5708
-   5. score_variance                      0.4207
-   6. avg_difficulty                      0.3483
-   7. retry_ratio                         0.2883
-   8. recent_xp_velocity                  0.2480
-   9. days_since_last_active              0.0532
-  10. average_score                       0.0302
+   1. avg_difficulty                      1.7617
+   2. completion_rate                     1.3297
+   3. retry_ratio                         1.1087
+   4. completion_time_vs_median           0.8974
+   5. activity_frequency                  0.7676
+   6. recent_xp_velocity                  0.1267
+   7. score_variance                      0.1130
+   8. total_attempts                      0.0365
+   9. days_since_last_active              0.0264
+  10. average_score                       0.0171
 
 Random Forest:
-   1. completion_time_vs_median           0.3459
-   2. recent_xp_velocity                  0.2385
-   3. average_score                       0.0842
-   4. avg_difficulty                      0.0841
-   5. completion_rate                     0.0697
-   6. activity_frequency                  0.0508
-   7. total_attempts                      0.0492
-   8. score_variance                      0.0423
-   9. days_since_last_active              0.0240
-  10. retry_ratio                         0.0112
+   1. recent_xp_velocity                  0.3196
+   2. completion_time_vs_median           0.1582
+   3. average_score                       0.1338
+   4. completion_rate                     0.1274
+   5. avg_difficulty                      0.0636
+   6. total_attempts                      0.0590
+   7. activity_frequency                  0.0570
+   8. score_variance                      0.0425
+   9. days_since_last_active              0.0226
+  10. retry_ratio                         0.0163
 
 ================================================================
 END OF REPORT

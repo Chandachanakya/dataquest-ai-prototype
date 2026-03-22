@@ -16,6 +16,12 @@ export interface User {
     difficulty: 'beginner' | 'intermediate' | 'advanced';
     topics: string[];
   };
+  // Impact Measurement fields (Optional to maintain backward compatibility)
+  firstActiveDate?: string;
+  lastActiveDate?: string;
+  totalActiveDays?: number;
+  retainedAfter7Days?: boolean;
+  retainedAfter14Days?: boolean;
 }
 
 export interface Quest {

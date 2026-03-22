@@ -104,6 +104,7 @@ export async function logInterventionEvent(
     probability: number,
     accepted: boolean
 ): Promise<void> {
+    // Log to standard decision_logs
     await supabase.from('decision_logs').insert({
         user_id: userId,
         state_detected: 'DROP_RISK',
@@ -117,6 +118,20 @@ export async function logInterventionEvent(
         },
         timestamp: new Date().toISOString(),
     });
+
+    // Record baseline for future recommendation modeling
+    try {
+        const { data: profile } = await supabase.from('profiles').select('xp').eq('id', userId).single();
+        await supabase.from('intervention_outcomes').insert({
+            user_id: userId,
+            intervention_case: interventionCase,
+            accepted: accepted,
+            xp_before: profile?.xp ?? 0
+            // xp_after_24h, xp_change, next_session_completed will be resolved by trackUserSession in >24h
+        });
+    } catch (e) {
+        console.warn('Failed to log intervention outcome baseline', e);
+    }
 }
 
 /**

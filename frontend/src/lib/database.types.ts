@@ -256,6 +256,11 @@ export type Database = {
           updated_at: string | null
           username: string
           xp: number | null
+          first_active_date: string | null
+          last_active_date: string | null
+          total_active_days: number | null
+          retained_after_7_days: boolean | null
+          retained_after_14_days: boolean | null
         }
         Insert: {
           avatar?: string | null
@@ -274,6 +279,11 @@ export type Database = {
           updated_at?: string | null
           username: string
           xp?: number | null
+          first_active_date?: string | null
+          last_active_date?: string | null
+          total_active_days?: number | null
+          retained_after_7_days?: boolean | null
+          retained_after_14_days?: boolean | null
         }
         Update: {
           avatar?: string | null
@@ -292,6 +302,11 @@ export type Database = {
           updated_at?: string | null
           username?: string
           xp?: number | null
+          first_active_date?: string | null
+          last_active_date?: string | null
+          total_active_days?: number | null
+          retained_after_7_days?: boolean | null
+          retained_after_14_days?: boolean | null
         }
         Relationships: []
       }
@@ -600,6 +615,53 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      intervention_outcomes: {
+        Row: {
+          id: string
+          user_id: string
+          intervention_case: string
+          accepted: boolean
+          xp_before: number
+          xp_after_24h: number | null
+          xp_change: number | null
+          next_session_completed: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          intervention_case: string
+          accepted?: boolean
+          xp_before: number
+          xp_after_24h?: number | null
+          xp_change?: number | null
+          next_session_completed?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          intervention_case?: string
+          accepted?: boolean
+          xp_before?: number
+          xp_after_24h?: number | null
+          xp_change?: number | null
+          next_session_completed?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intervention_outcomes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

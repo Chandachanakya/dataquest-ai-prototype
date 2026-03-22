@@ -63,14 +63,27 @@ def generate_score(persona: UserPersona, difficulty: int, attempt_number: int) -
     base = persona.base_score
     difficulty_penalty = (difficulty - 3) * 5
     retry_bonus = min(attempt_number * 3, 15)
-    variance = random.randint(-persona.score_variance, persona.score_variance)
-    score = base - difficulty_penalty + retry_bonus + variance
-    return max(0, min(100, score))
+    
+    # Increase variance by injecting random uncharacteristic good/bad days
+    base_variance = random.randint(-persona.score_variance, persona.score_variance)
+    if random.random() < 0.15:  # 15% chance of a wild swing
+        wild_swing = random.randint(-30, 30)
+    else:
+        wild_swing = 0
+        
+    score = base - difficulty_penalty + retry_bonus + base_variance + wild_swing
+    return max(0, min(100, int(score)))
 
 def generate_completion_time(persona: UserPersona, difficulty: int) -> int:
     base_time = 300 + (difficulty * 120)
     adjusted_time = base_time * persona.completion_time_factor
-    variance = random.randint(-60, 120)
+    
+    # Much wider variance (distractions, leaving desk, etc.)
+    if random.random() < 0.10: 
+        variance = random.randint(300, 1800) # Left the tab open
+    else:
+        variance = random.randint(-120, 240)
+        
     return max(60, int(adjusted_time + variance))
 
 def should_retry(persona: UserPersona, score: int) -> bool:
@@ -80,6 +93,10 @@ def should_retry(persona: UserPersona, score: int) -> bool:
     return random.random() < retry_chance
 
 def should_continue_activity(persona: UserPersona, days_since_start: int) -> bool:
+    # 15% of the time, users act completely counter to their persona (Life gets in the way)
+    if random.random() < 0.15:
+        return random.random() > 0.5
+        
     drop_chance = persona.drop_probability * (1 + days_since_start / 30)
     return random.random() > drop_chance
 
@@ -134,7 +151,7 @@ def generate_user_journey(user_id: str, persona: UserPersona, start_date: dateti
     
     return attempts
 
-def simulate_users(num_users: int = 150) -> pd.DataFrame:
+def simulate_users(num_users: int = 1000) -> pd.DataFrame:
     """Simulate users and return as DataFrame."""
     all_attempts = []
     
@@ -180,7 +197,7 @@ def main():
     print("=" * 60)
     
     # Generate data
-    df = simulate_users(num_users=150)
+    df = simulate_users(num_users=1000)
     
     # Show statistics
     print("\n📈 Persona Distribution:")
