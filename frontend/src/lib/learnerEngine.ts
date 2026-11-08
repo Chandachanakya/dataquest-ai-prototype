@@ -13,7 +13,7 @@ import { getOptimalQuestSequence, getAdaptiveDifficultyLevel, selectBestInterven
 import { predictDropRisk, getMLApiStatus } from './mlApiClient';
 import { getUserExperimentGroup, type ExperimentGroup } from './experimentService';
 import type { Quest } from './types';
-import { calculateFeatureVector, DATASET_MEDIAN_TIME, DIFFICULTY_NUMERIC_MAP, type MLFeatures } from './learnerFeatures';
+import { calculateFeatureVector, DATASET_MEDIAN_TIME, DIFFICULTY_NUMERIC_MAP, isNewLearner, type MLFeatures } from './learnerFeatures';
 
 /**
  * RECOMPUTE POLICY (Phase 0 - Defensible AI)
@@ -30,8 +30,7 @@ export type LearnerState = 'STRUGGLING' | 'FAST' | 'CONSISTENT' | 'DROP_RISK' | 
 /**
  * COLD-START POLICY (Phase 4)
  *
- * The deployed Random Forest was trained on 749 simulated learners, each
- * having at least 1 attempt and a minimum activity_frequency of 1.
+ * NEW_LEARNER is an onboarding lifecycle state, not an inactivity label.
  * A learner with 0 attempts produces an out-of-distribution feature vector
  * (activity_frequency = 0, total_attempts = 0, average_score = 0, etc.)
  * which the model cannot evaluate reliably. Empirically, this produces
@@ -39,15 +38,12 @@ export type LearnerState = 'STRUGGLING' | 'FAST' | 'CONSISTENT' | 'DROP_RISK' | 
  * drop, but because the input vector lies entirely outside the model's
  * training distribution.
  *
- * Policy: If a learner has fewer than MIN_ATTEMPTS_FOR_ML attempts, skip
- * ML inference and assign the NEW_LEARNER state with a heuristic
- * onboarding-appropriate distribution.
+ * Policy: only zero lifetime attempts bypass inference and receive onboarding.
  *
  * This threshold (5) was chosen empirically: at 5 attempts the model
  * starts producing discrimination (P ≈ 0.55 for typical early learners),
  * whereas below 3 attempts the prediction is unreliably high (P > 0.86).
  */
-export const MIN_ATTEMPTS_FOR_ML = 5;
 
 /** Authoritative 10-feature vector matching backend model training order */
 export type { MLFeatures } from './learnerFeatures';
@@ -244,9 +240,8 @@ export async function determineLearnerState(userId: string): Promise<StateResult
     // outside the model's training distribution, producing spuriously high risk
     // probabilities (empirically ≥ 0.86 for 1–2 attempts).
     // We bypass ML inference and assign NEW_LEARNER unconditionally in this case.
-    // NEW_LEARNER is reserved for no lifetime history. A dormant learner must
-    // remain distinguishable even when rolling 30-day activity is zero.
-    if (metrics.total_attempts === 0) {
+    // NEW_LEARNER is reserved for zero lifetime history; dormant learners retain history.
+    if (isNewLearner(metrics.total_attempts)) {
         const experimentGroup = await getUserExperimentGroup(userId, 'ml_vs_heuristic');
         const coldStartDistribution: StateDistribution = {
             'NEW_LEARNER': 1.0000,

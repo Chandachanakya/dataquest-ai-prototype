@@ -1,8 +1,8 @@
 ================================================================
 DATAQUEST AI - OFFLINE EVALUATION REPORT
 ================================================================
-Generated  : 2026-03-23 10:28:59
-Dataset    : 749 users, 10 features
+Generated  : 2026-11-08 14:15:16
+Dataset    : 718 users, 10 features
 Drop rate  : 32.3%
 
 ================================================================
@@ -10,66 +10,66 @@ CROSS-VALIDATION
 ================================================================
 
 Logistic Regression:
-  roc_auc     : 0.9757 ± 0.0129
-  f1          : 0.8865 ± 0.0355
-  precision   : 0.8546 ± 0.0343
-  recall      : 0.9214 ± 0.0421
-  accuracy    : 0.9238 ± 0.0239
+  roc_auc     : 0.9673 ± 0.0105
+  f1          : 0.8511 ± 0.0371
+  precision   : 0.8296 ± 0.0449
+  recall      : 0.8787 ± 0.0685
+  accuracy    : 0.9011 ± 0.0247
 
 Random Forest:
-  roc_auc     : 0.9819 ± 0.0093
-  f1          : 0.9145 ± 0.0319
-  precision   : 0.9167 ± 0.0240
-  recall      : 0.9129 ± 0.0447
-  accuracy    : 0.9452 ± 0.0197
+  roc_auc     : 0.9689 ± 0.0072
+  f1          : 0.8636 ± 0.0282
+  precision   : 0.8515 ± 0.0280
+  recall      : 0.8787 ± 0.0566
+  accuracy    : 0.9108 ± 0.0168
 
 ================================================================
 HOLD-OUT TEST SET (80/20 split)
 ================================================================
 
 Logistic Regression:
-  roc_auc     : 0.9734
-  f1          : 0.8776
-  precision   : 0.8600
-  recall      : 0.8958
-  accuracy    : 0.9200
-  brier       : 0.0602
+  roc_auc     : 0.9570
+  f1          : 0.8421
+  precision   : 0.8333
+  recall      : 0.8511
+  accuracy    : 0.8958
+  brier       : 0.0736
 
 Random Forest:
-  roc_auc     : 0.9820
+  roc_auc     : 0.9835
   f1          : 0.8750
-  precision   : 0.8750
-  recall      : 0.8750
-  accuracy    : 0.9200
-  brier       : 0.0515
+  precision   : 0.8571
+  recall      : 0.8936
+  accuracy    : 0.9167
+  brier       : 0.0523
 
 ================================================================
 FEATURE IMPORTANCE
 ================================================================
 
 Logistic Regression:
-   1. avg_difficulty                      1.7617
-   2. completion_rate                     1.3297
-   3. retry_ratio                         1.1087
-   4. completion_time_vs_median           0.8974
-   5. activity_frequency                  0.7676
-   6. recent_xp_velocity                  0.1267
-   7. score_variance                      0.1130
-   8. total_attempts                      0.0365
-   9. days_since_last_active              0.0264
-  10. average_score                       0.0171
+   1. completion_rate                     2.4806
+   2. avg_difficulty                      2.3754
+   3. total_attempts                      1.5040
+   4. completion_time_vs_median           1.1990
+   5. retry_ratio                         1.1571
+   6. activity_frequency                  0.4752
+   7. score_variance                      0.0776
+   8. days_since_last_active              0.0632
+   9. average_score                       0.0202
+  10. recent_xp_velocity                  0.0111
 
 Random Forest:
-   1. recent_xp_velocity                  0.3196
-   2. completion_time_vs_median           0.1582
-   3. average_score                       0.1338
-   4. completion_rate                     0.1274
-   5. avg_difficulty                      0.0636
-   6. total_attempts                      0.0590
-   7. activity_frequency                  0.0570
-   8. score_variance                      0.0425
-   9. days_since_last_active              0.0226
-  10. retry_ratio                         0.0163
+   1. completion_time_vs_median           0.2290
+   2. average_score                       0.2020
+   3. avg_difficulty                      0.1668
+   4. completion_rate                     0.1652
+   5. total_attempts                      0.1090
+   6. score_variance                      0.0436
+   7. days_since_last_active              0.0345
+   8. activity_frequency                  0.0309
+   9. retry_ratio                         0.0190
+  10. recent_xp_velocity                  0.0001
 
 ================================================================
 END OF REPORT

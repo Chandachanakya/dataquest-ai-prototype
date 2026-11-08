@@ -8,6 +8,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
+RANDOM_SEED = 42
+GENERATION_TIMESTAMP = datetime(2026, 11, 8, 12, 0, 0)
+
 # Quest IDs and difficulty
 QUEST_IDS = [
     "python-basics-1", "python-basics-2", "python-basics-3",
@@ -151,7 +154,8 @@ def generate_user_journey(user_id: str, persona: UserPersona, start_date: dateti
     
     return attempts
 
-def simulate_users(num_users: int = 1000, seed: int = 42) -> pd.DataFrame:
+def simulate_users(num_users: int = 1000, seed: int = RANDOM_SEED,
+                   generation_timestamp: datetime = GENERATION_TIMESTAMP) -> pd.DataFrame:
     """Simulate users and return as DataFrame."""
     random.seed(seed)
     all_attempts = []
@@ -163,7 +167,7 @@ def simulate_users(num_users: int = 1000, seed: int = 42) -> pd.DataFrame:
         "drop_risk": 0.2
     }
     
-    start_date = datetime.now() - timedelta(days=60)
+    start_date = generation_timestamp - timedelta(days=60)
     
     print(f"\n🎭 Simulating {num_users} users...")
     

@@ -1,10 +1,13 @@
 {
-  "status": "pre-correction artifact inventory; retraining required before deployment",
-  "dataset": {"path": "data/quest_attempts.csv", "sha256": "3E52289A47C30B91CD0D59C180E2F14E46DF2F951BF4F3536B518EBA681FF51A", "rows": 3203},
-  "artifacts": {"random_forest": {"path": "models/drop_risk_rf_v1.pkl", "sha256": "F3F9FB259CF4363C7B4256B715C1B025F0D84945EDD8E5E7B198462410CAAA28"}, "logistic_regression": {"path": "models/drop_risk_lr_v1.pkl", "sha256": "25D38237FEA0B5BCCBB0FB005888D4B778ED95EDE41B1153718FCFC7F3C33DF3"}},
+  "status": "retrained deterministic synthetic-data artifacts; not real-user evidence",
+  "feature_specification_version": "v2",
+  "dataset": {"path": "data/quest_attempts.csv", "sha256": "402D05ADA2FC4A3648A83015A4F0A38BE9C9E7A3851371849DFC541962226A17", "rows": 2865, "completion_time_median_seconds": 576},
+  "training_features": {"path": "data/training_features.csv", "sha256": "085E663BA6847BA8797170187039B31917697868EEA01C84BBC7D0DEDB107160", "rows": 718},
+  "artifacts": {"random_forest": {"path": "models/drop_risk_rf_v1.pkl", "sha256": "D2147E15CD73C86366E0006F02319F82B5DCF9468F8992B3FF1501D9D5F2A3E8"}, "logistic_regression": {"path": "models/drop_risk_lr_v1.pkl", "sha256": "B4AC46DB1309E1FCA9BA0CC35E26E23052DF988B938CD50B19FDA3313CBB7AE0"}},
   "synthetic_data_seed": 42,
+  "generation_timestamp": "2026-11-08T12:00:00",
   "training_configuration": {"test_size": 0.2, "random_state": 42, "logistic_regression": {"max_iter": 1000, "class_weight": "balanced"}, "random_forest": {"n_estimators": 100, "max_depth": 10, "min_samples_split": 5, "min_samples_leaf": 2, "class_weight": "balanced", "random_state": 42}},
   "train_test_split": "stratified when possible; random_state=42; test_size=0.2",
-  "cross_validation": "StratifiedKFold, up to 3 folds, shuffle=true, random_state=42",
-  "model_training_timestamp": "2026-03-22T10:11:38.2112028Z (filesystem timestamp of pre-correction RF artifact)"
+  "cross_validation": "Training: StratifiedKFold(3), shuffle=true, random_state=42. Evaluation: StratifiedKFold(5), shuffle=true, random_state=42.",
+  "model_training_timestamp": "2026-11-08T14:15:04 local workspace time"
 }

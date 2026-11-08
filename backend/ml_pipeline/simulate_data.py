@@ -16,6 +16,9 @@ from typing import List, Dict, Any
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
+RANDOM_SEED = 42
+GENERATION_TIMESTAMP = datetime(2026, 11, 8, 12, 0, 0)
+
 # Load environment variables
 load_dotenv()
 
@@ -172,7 +175,8 @@ def generate_user_journey(user_id: str, persona: UserPersona, start_date: dateti
     
     return attempts
 
-def simulate_users(num_users: int = 50, seed: int = 42) -> List[Dict[str, Any]]:
+def simulate_users(num_users: int = 50, seed: int = RANDOM_SEED,
+                   generation_timestamp: datetime = GENERATION_TIMESTAMP) -> List[Dict[str, Any]]:
     """Simulate multiple users with different personas."""
     random.seed(seed)
     all_attempts = []
@@ -185,7 +189,7 @@ def simulate_users(num_users: int = 50, seed: int = 42) -> List[Dict[str, Any]]:
         "drop_risk": 0.2
     }
     
-    start_date = datetime.now() - timedelta(days=60)
+    start_date = generation_timestamp - timedelta(days=60)
     
     print(f"\n🎭 Simulating {num_users} users...")
     

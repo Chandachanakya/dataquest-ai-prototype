@@ -2,7 +2,8 @@
  * Authoritative client-side implementation of the ten model features.
  * It has no database dependency so validation can execute this exact code.
  */
-export const DATASET_MEDIAN_TIME = 599.0;
+/** Median positive completion_time in the deterministic training corpus. */
+export const DATASET_MEDIAN_TIME = 576.0;
 export const DIFFICULTY_NUMERIC_MAP: Record<string, number> = {
   beginner: 1, intermediate: 2, advanced: 4, expert: 6,
 };
@@ -22,6 +23,9 @@ export interface MLFeatures {
   score_variance: number; recent_xp_velocity: number; completion_rate: number;
   avg_difficulty: number;
 }
+
+/** Cold start is a lifecycle state: only zero lifetime attempts is new. */
+export const isNewLearner = (totalAttempts: number): boolean => totalAttempts === 0;
 
 const round = (n: number, places: number) => Number(n.toFixed(places));
 const finite = (value: unknown, fallback: number) => {

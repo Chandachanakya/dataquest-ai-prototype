@@ -39,4 +39,8 @@ docs/
 # Python venv
 backend/venv/
 
+# Python bytecode
+__pycache__/
+*.py[cod]
+
 research_paper_insights.md

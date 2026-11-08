@@ -25,20 +25,41 @@ from datetime import timedelta
 
 def load_data(filepath: str = "data/quest_attempts.csv") -> pd.DataFrame:
     df = pd.read_csv(filepath)
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', utc=True)
     return df
 
 
-def calculate_user_features(df: pd.DataFrame, reference_time=None) -> pd.DataFrame:
-    """Create lifetime features evaluated at one explicit snapshot timestamp."""
-    df = df.sort_values(['user_id', 'timestamp'])
+def calculate_user_features(df: pd.DataFrame, reference_time=None,
+                            dataset_median_time=None, user_ids=None) -> pd.DataFrame:
+    """Create lifetime features at an explicit snapshot timestamp.
+
+    Invalid and future timestamps are excluded. Optional arguments make the
+    production training implementation directly testable against fixtures.
+    """
+    df = df.copy()
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', utc=True)
     dataset_end = pd.Timestamp(reference_time) if reference_time is not None else df['timestamp'].max()
-    dataset_median_time = df['completion_time'].median()
+    if dataset_end.tzinfo is None:
+        dataset_end = dataset_end.tz_localize('UTC')
+    df = df[df['timestamp'].notna() & (df['timestamp'] <= dataset_end)].sort_values(['user_id', 'timestamp'])
+    dataset_median_time = (float(dataset_median_time) if dataset_median_time is not None
+                           else df.loc[df['completion_time'] > 0, 'completion_time'].median())
+    known_users = list(user_ids) if user_ids is not None else list(df['user_id'].unique())
 
     features_list = []
 
-    for user_id in df['user_id'].unique():
+    for user_id in known_users:
         ud = df[df['user_id'] == user_id].copy()
+        if ud.empty:
+            features_list.append({
+                'user_id': user_id, 'persona_type': 'unknown',
+                'days_since_last_active': 30.0, 'activity_frequency': 0,
+                'average_score': 0.0, 'total_attempts': 0,
+                'completion_time_vs_median': 1.0, 'retry_ratio': 1.0,
+                'score_variance': 0.0, 'recent_xp_velocity': 0.0,
+                'completion_rate': 0.0, 'avg_difficulty': 1.0,
+            })
+            continue
         latest_ts    = ud['timestamp'].max()
         total_att    = len(ud)
         unique_quests = ud['quest_id'].nunique()
