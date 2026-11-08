@@ -178,16 +178,20 @@ export async function getExperimentResults(
         targetMap[m.metric_name].push(m.metric_value);
     });
 
-    // Calculate averages
+    // Calculate averages safely with empty array protection
     const avgControl: Record<string, number> = {};
     const avgTreatment: Record<string, number> = {};
 
     Object.entries(controlMetrics).forEach(([metric, values]) => {
-        avgControl[metric] = values.reduce((a, b) => a + b, 0) / values.length;
+        avgControl[metric] = values.length > 0
+            ? values.reduce((a, b) => a + b, 0) / values.length
+            : 0;
     });
 
     Object.entries(treatmentMetrics).forEach(([metric, values]) => {
-        avgTreatment[metric] = values.reduce((a, b) => a + b, 0) / values.length;
+        avgTreatment[metric] = values.length > 0
+            ? values.reduce((a, b) => a + b, 0) / values.length
+            : 0;
     });
 
     return {

@@ -41,7 +41,7 @@ export interface MLNextQuestResponse {
  */
 export async function predictDropRisk(
     userId: string,
-    features: Record<string, number>
+    features: Record<string, number> | { [key: string]: number }
 ): Promise<MLDropRiskResponse | null> {
     if (!USE_ML_API) {
         return null; // Fallback to heuristics

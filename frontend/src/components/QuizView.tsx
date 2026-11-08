@@ -51,7 +51,7 @@ const QuizView = ({ questions, onComplete }: QuizViewProps) => {
       </CardHeader>
       <CardContent className="space-y-6">
         <RadioGroup 
-          value={selectedAnswer?.toString()} 
+          value={selectedAnswer !== null ? selectedAnswer.toString() : ""} 
           onValueChange={(val) => !showFeedback && setSelectedAnswer(parseInt(val))}
           className="space-y-3"
         >

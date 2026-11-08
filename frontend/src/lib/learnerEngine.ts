@@ -25,16 +25,35 @@ import { getUserExperimentGroup, type ExperimentGroup } from './experimentServic
 
 export type LearnerState = 'STRUGGLING' | 'FAST' | 'CONSISTENT' | 'DROP_RISK';
 
-export interface LearnerMetrics {
-    avgScore: number;
-    normalizedAvgScore: number; // Normalized by difficulty
+/** Authoritative 10-feature vector matching backend model training order */
+export interface MLFeatures {
+    [key: string]: number;
+    days_since_last_active: number;
+    activity_frequency: number;
+    average_score: number;
+    total_attempts: number;
+    completion_time_vs_median: number;
+    retry_ratio: number;
+    score_variance: number;
+    recent_xp_velocity: number;
+    completion_rate: number;
+    avg_difficulty: number;
+}
+
+export interface LearnerMetrics extends MLFeatures {
+    avgScore: number;           // Raw average percentage (0–100)
+    normalizedAvgScore: number; // Training-normalized average score
     totalAttempts: number;
     avgCompletionTime: number;
     lastActiveDate: Date | null;
     recentXP: number;
-    retryRatio: number;      // attempts / completions (Persistence)
-    scoreVariance: number;   // Variance of recent scores (Consistency)
-    completionRate: number;  // completions / starts
+    retryRatio: number;
+    scoreVariance: number;
+    completionRate: number;
+    activityFrequency: number;
+    avgDifficulty: number;
+    completionTimeVsMedian: number;
+    recentXpVelocity: number;
 }
 
 export type StateDistribution = Record<LearnerState, number>;
@@ -43,30 +62,33 @@ export interface StateResult {
     state: LearnerState; // The primary state (highest probability)
     reason: string;
     metrics: LearnerMetrics;
-    confidenceScore: number; // Decision confidence
-    distribution: StateDistribution; // NEW: Full probability distribution
+    confidenceScore: number; // Decision confidence (margin between top states)
+    distribution: StateDistribution; // Normalized probability distribution summing to 1.0
     decisionSource?: 'ml_api' | 'heuristic'; // Track prediction source
     mlModelVersion?: string; // ML model version if used
     experimentGroup?: ExperimentGroup; // A/B test group assignment
 }
 
+/** Difficulty string to numeric scale (1–4) */
+export const DIFFICULTY_NUMERIC_MAP: Record<string, number> = {
+    'beginner': 1,
+    'intermediate': 2,
+    'advanced': 3,
+    'expert': 4
+};
+
+/** Dataset median completion time in seconds, derived empirically from the quest_attempts corpus */
+export const DATASET_MEDIAN_TIME = 599.0;
+
 /**
- * Calculate learner metrics from quest_attempts with normalization
- * 
- * METRIC NORMALIZATION (Phase 0):
- * - Scores are normalized by quest difficulty to ensure fair comparison
- * - Difficulty multipliers: Beginner=0.8, Intermediate=1.0, Advanced=1.2
- * 
- * BEHAVIORAL FEATURES (Phase 1):
- * - retryRatio: Indicates persistence (higher is more retries)
- * - scoreVariance: Indicates consistency (lower is more consistent)
- * - completionRate: Indicates follow-through
+ * Calculate learner metrics from quest_attempts with unified feature definitions.
+ * Conforms strictly to backend/ml_pipeline/engineer_features.py.
  */
 async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Get ALL attempts in last 30 days (completed or not)
+    // Get ALL attempts in last 30 days
     const { data: attempts, error } = await supabase
         .from('quest_attempts')
         .select('*')
@@ -75,116 +97,149 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
 
     if (error) {
         console.error('Error fetching attempts:', error);
-        return {
-            avgScore: 0,
-            normalizedAvgScore: 0,
-            totalAttempts: 0,
-            avgCompletionTime: 0,
-            lastActiveDate: null,
-            recentXP: 0,
-            retryRatio: 0,
-            scoreVariance: 0,
-            completionRate: 0
-        };
     }
 
-    const totalAttempts = attempts?.length || 0;
+    const safeAttempts = attempts || [];
+    const totalAttempts = safeAttempts.length;
 
-    if (totalAttempts === 0) {
-        return {
-            avgScore: 0,
-            normalizedAvgScore: 0,
-            totalAttempts: 0,
-            avgCompletionTime: 0,
-            lastActiveDate: null,
-            recentXP: 0,
-            retryRatio: 0,
-            scoreVariance: 0,
-            completionRate: 0
-        };
+    // Fetch quest details for difficulty mapping
+    const questIds = [...new Set(safeAttempts.map(a => a.quest_id))];
+    let questDifficultyMap = new Map<string, number>();
+
+    if (questIds.length > 0) {
+        const { data: quests } = await supabase
+            .from('quests')
+            .select('id, difficulty')
+            .in('id', questIds);
+
+        questDifficultyMap = new Map(
+            quests?.map(q => [q.id, DIFFICULTY_NUMERIC_MAP[q.difficulty] || 1]) || []
+        );
     }
 
-    // Filter for completed attempts for score calculations
-    const completedAttempts = attempts.filter(a => a.status === 'completed');
+    const completedAttempts = safeAttempts.filter(a => a.status === 'completed');
     const successfulCompletions = completedAttempts.length;
 
-    // Fetch quest details separately for difficulty normalization
-    const questIds = [...new Set(attempts.map(a => a.quest_id))];
-    const { data: quests } = await supabase
-        .from('quests')
-        .select('id, difficulty')
-        .in('id', questIds);
-
-    const questDifficultyMap = new Map(
-        quests?.map(q => [q.id, q.difficulty]) || []
-    );
-
-    // Difficulty multipliers for normalization
-    const difficultyMultipliers: Record<string, number> = {
-        'beginner': 0.8,
-        'intermediate': 1.0,
-        'advanced': 1.2
-    };
-
-    // Calculate raw and normalized scores (only for completed attempts)
-    const avgScore = successfulCompletions > 0
-        ? completedAttempts.reduce((sum, a) => sum + (a.score || 0), 0) / successfulCompletions
-        : 0;
-
-    const normalizedScores = completedAttempts.map(a => {
-        const difficulty = questDifficultyMap.get(a.quest_id) || 'intermediate';
-        const multiplier = difficultyMultipliers[difficulty] || 1.0;
-        return (a.score || 0) * multiplier;
-    });
-    const normalizedAvgScore = successfulCompletions > 0
-        ? normalizedScores.reduce((sum, s) => sum + s, 0) / successfulCompletions
-        : 0;
-
-    const avgCompletionTime = successfulCompletions > 0
-        ? completedAttempts
-            .filter(a => a.completion_time)
-            .reduce((sum, a) => sum + (a.completion_time || 0), 0) / successfulCompletions
-        : 0;
-
-    const lastActiveDate = attempts.length > 0
-        ? new Date(Math.max(...attempts.map(a => new Date(a.started_at).getTime())))
+    // 1. days_since_last_active (days since latest attempt; 30.0 if zero attempts)
+    const lastActiveDate = safeAttempts.length > 0
+        ? new Date(Math.max(...safeAttempts.map(a => new Date(a.started_at).getTime())))
         : null;
+    const daysSinceLastActive = lastActiveDate
+        ? Math.max(0, (Date.now() - lastActiveDate.getTime()) / (1000 * 60 * 60 * 24))
+        : 30.0;
 
-    // Get recent XP from user_progress
+    // 2. activity_frequency (distinct active calendar dates in 30-day window)
+    const activeDates = new Set(
+        safeAttempts.map(a => new Date(a.started_at).toISOString().split('T')[0])
+    );
+    const activityFrequency = activeDates.size;
+
+    // 3. average_score: in training, normalized by difficulty factor: (score / (diff * 10)) * 100
+    // Also track rawAvgScore (0-100) for standard UI rendering
+    let rawScoreSum = 0;
+    let normScoreSum = 0;
+
+    safeAttempts.forEach(a => {
+        const rawScore = Number(a.score) || 0;
+        const diff = questDifficultyMap.get(a.quest_id) || 1;
+        rawScoreSum += rawScore;
+        normScoreSum += (rawScore / (diff * 10)) * 100;
+    });
+
+    const avgScore = totalAttempts > 0 ? rawScoreSum / totalAttempts : 0.0;
+    const normalizedAvgScore = totalAttempts > 0 ? normScoreSum / totalAttempts : 0.0;
+
+    // 4. total_attempts
+    // totalAttempts
+
+    // 5. completion_time_vs_median: user's mean completed time vs platform baseline (599s)
+    const completedWithTime = completedAttempts.filter(a => a.completion_time && a.completion_time > 0);
+    const meanCompletionTime = completedWithTime.length > 0
+        ? completedWithTime.reduce((sum, a) => sum + Number(a.completion_time), 0) / completedWithTime.length
+        : DATASET_MEDIAN_TIME;
+    const completionTimeVsMedian = meanCompletionTime / DATASET_MEDIAN_TIME;
+
+    // 6. retry_ratio: total attempts / unique quests attempted
+    const uniqueQuestsCount = new Set(safeAttempts.map(a => a.quest_id)).size;
+    const retryRatio = uniqueQuestsCount > 0 ? totalAttempts / uniqueQuestsCount : 1.0;
+
+    // 7. score_variance: sample standard deviation (ddof=1) of scores across attempts
+    let scoreVariance = 0.0;
+    if (totalAttempts > 1) {
+        const varianceSum = safeAttempts.reduce((sum, a) => {
+            const diff = (Number(a.score) || 0) - avgScore;
+            return sum + (diff * diff);
+        }, 0);
+        scoreVariance = Math.sqrt(varianceSum / (totalAttempts - 1));
+    }
+
+    // 8. recent_xp_velocity: sum of scores in trailing 7 days divided by 7.0
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentAttempts = safeAttempts.filter(a => new Date(a.started_at) >= sevenDaysAgo);
+    const recentScoreSum = recentAttempts.reduce((sum, a) => sum + (Number(a.score) || 0), 0);
+    const recentXpVelocity = recentScoreSum / 7.0;
+
+    // 9. completion_rate: completed / total attempts
+    const completionRate = totalAttempts > 0 ? successfulCompletions / totalAttempts : 0.0;
+
+    // 10. avg_difficulty: mean numeric difficulty across attempts
+    const sumDifficulty = safeAttempts.reduce((sum, a) => sum + (questDifficultyMap.get(a.quest_id) || 1), 0);
+    const avgDifficulty = totalAttempts > 0 ? sumDifficulty / totalAttempts : 1.0;
+
+    // Profile XP for streak/gamification checks
     const { data: profile } = await supabase
         .from('profiles')
         .select('xp')
         .eq('id', userId)
         .single();
 
-    // --- BEHAVIORAL FEATURES CALCULATION ---
-
-    // Retry Ratio: Total attempts / Successful completions
-    const retryRatio = successfulCompletions > 0 ? totalAttempts / successfulCompletions : totalAttempts;
-
-    // Completion Rate: Successful completions / Total starts
-    const completionRate = totalAttempts > 0 ? successfulCompletions / totalAttempts : 0;
-
-    // Score Variance: sum((x - mean)^2) / n
-    let scoreVariance = 0;
-    if (successfulCompletions > 1) {
-        const varianceSum = completedAttempts.reduce((sum, a) => {
-            const diff = (a.score || 0) - avgScore;
-            return sum + (diff * diff);
-        }, 0);
-        scoreVariance = varianceSum / successfulCompletions;
-    }
-
     return {
-        avgScore,
-        normalizedAvgScore,
+        // Authoritative 10 ML Features
+        days_since_last_active: Number(daysSinceLastActive.toFixed(2)),
+        activity_frequency: activityFrequency,
+        average_score: Number(normalizedAvgScore.toFixed(2)),
+        total_attempts: totalAttempts,
+        completion_time_vs_median: Number(completionTimeVsMedian.toFixed(4)),
+        retry_ratio: Number(retryRatio.toFixed(4)),
+        score_variance: Number(scoreVariance.toFixed(2)),
+        recent_xp_velocity: Number(recentXpVelocity.toFixed(4)),
+        completion_rate: Number(completionRate.toFixed(4)),
+        avg_difficulty: Number(avgDifficulty.toFixed(2)),
+
+        // Human-readable convenience metrics
+        avgScore: Number(avgScore.toFixed(1)),
+        normalizedAvgScore: Number(normalizedAvgScore.toFixed(2)),
         totalAttempts,
-        avgCompletionTime,
+        avgCompletionTime: Math.round(meanCompletionTime),
         lastActiveDate,
         recentXP: profile?.xp || 0,
-        retryRatio,
-        scoreVariance,
-        completionRate
+        retryRatio: Number(retryRatio.toFixed(2)),
+        scoreVariance: Number(scoreVariance.toFixed(2)),
+        completionRate: Number(completionRate.toFixed(2)),
+        activityFrequency,
+        avgDifficulty: Number(avgDifficulty.toFixed(2)),
+        completionTimeVsMedian: Number(completionTimeVsMedian.toFixed(2)),
+        recentXpVelocity: Number(recentXpVelocity.toFixed(2)),
+    };
+}
+
+/**
+ * Extract authoritative 10-feature vector for the ML API.
+ * Ensures strict parity with training pipeline.
+ */
+export async function extractLearnerFeatures(userId: string): Promise<MLFeatures> {
+    const metrics = await calculateMetrics(userId);
+    return {
+        days_since_last_active: metrics.days_since_last_active,
+        activity_frequency: metrics.activity_frequency,
+        average_score: metrics.average_score,
+        total_attempts: metrics.total_attempts,
+        completion_time_vs_median: metrics.completion_time_vs_median,
+        retry_ratio: metrics.retry_ratio,
+        score_variance: metrics.score_variance,
+        recent_xp_velocity: metrics.recent_xp_velocity,
+        completion_rate: metrics.completion_rate,
+        avg_difficulty: metrics.avg_difficulty,
     };
 }
 
@@ -238,40 +293,80 @@ export async function determineLearnerState(userId: string): Promise<StateResult
     const forceML = experimentGroup === 'treatment';
     const forceHeuristic = experimentGroup === 'control';
 
-    // PHASE 4: Try ML API (if enabled OR if in treatment group)
-    const mlFeatures = {
-        days_since_last_active: daysSinceActive,
-        activity_frequency: metrics.totalAttempts > 0 ? metrics.totalAttempts / 30 : 0,
-        average_score: metrics.normalizedAvgScore,
-        total_attempts: metrics.totalAttempts,
-        completion_time_vs_median: 1.0, // Placeholder
-        retry_ratio: metrics.retryRatio,
-        score_variance: metrics.scoreVariance,
-        recent_xp_velocity: metrics.recentXP / 7
+    // PHASE 4: Authoritative 10-feature vector matching backend model training
+    const mlFeatures: MLFeatures = {
+        days_since_last_active: metrics.days_since_last_active,
+        activity_frequency: metrics.activity_frequency,
+        average_score: metrics.average_score,
+        total_attempts: metrics.total_attempts,
+        completion_time_vs_median: metrics.completion_time_vs_median,
+        retry_ratio: metrics.retry_ratio,
+        score_variance: metrics.score_variance,
+        recent_xp_velocity: metrics.recent_xp_velocity,
+        completion_rate: metrics.completion_rate,
+        avg_difficulty: metrics.avg_difficulty
     };
 
     // Only try ML API if not forced to use heuristics
     const mlPrediction = !forceHeuristic ? await predictDropRisk(userId, mlFeatures) : null;
 
     if (mlPrediction && !forceHeuristic) {
-        // ML API succeeded - use ML prediction
-        const mlState: LearnerState = mlPrediction.risk_level === 'high' ? 'DROP_RISK' :
-            mlPrediction.risk_level === 'medium' ? 'STRUGGLING' :
-                mlPrediction.probability > 0.6 ? 'FAST' : 'CONSISTENT';
+        const dropProb = Math.max(0.0, Math.min(1.0, mlPrediction.probability));
+        const perfRatio = Math.max(0.0, Math.min(1.0, metrics.avgScore / 100));
+        const completionRate = Math.max(0.0, Math.min(1.0, metrics.completion_rate));
 
-        // Create distribution based on ML probability
-        const distribution: StateDistribution = {
-            'DROP_RISK': mlPrediction.risk_level === 'high' ? mlPrediction.probability : 0.1,
-            'STRUGGLING': mlPrediction.risk_level === 'medium' ? mlPrediction.probability : 0.2,
-            'FAST': mlPrediction.probability < 0.3 && metrics.normalizedAvgScore > 75 ? 0.4 : 0.1,
-            'CONSISTENT': 1 - mlPrediction.probability
+        // 1. Determine ML-grounded primary state (all 4 states reachable)
+        let mlState: LearnerState;
+        let reason = '';
+
+        if (dropProb >= 0.70 || mlPrediction.risk_level === 'high') {
+            mlState = 'DROP_RISK';
+            reason = `ML prediction (${mlPrediction.model_version}): High churn risk (${(dropProb * 100).toFixed(0)}%). Inactivity or engagement deceleration detected.`;
+        } else if (dropProb >= 0.40 || mlPrediction.risk_level === 'medium') {
+            mlState = 'STRUGGLING';
+            reason = `ML prediction (${mlPrediction.model_version}): Moderate struggle/risk (${(dropProb * 100).toFixed(0)}%). Difficulties with content pace or persistence detected.`;
+        } else {
+            // Low risk (P < 0.40): Distinguish FAST from CONSISTENT
+            if (metrics.avgScore >= 75 && completionRate >= 0.70 && metrics.total_attempts > 0) {
+                mlState = 'FAST';
+                reason = `ML prediction (${mlPrediction.model_version}): Low risk (${(dropProb * 100).toFixed(0)}%) with high accuracy (${metrics.avgScore.toFixed(0)}%) and completion rate (${(completionRate * 100).toFixed(0)}%).`;
+            } else {
+                mlState = 'CONSISTENT';
+                reason = `ML prediction (${mlPrediction.model_version}): Low risk (${(dropProb * 100).toFixed(0)}%) with steady progression and moderate consistency.`;
+            }
+        }
+
+        // 2. Mathematically valid 4-state probability distribution (sums strictly to 1.0)
+        const rawWeights: Record<LearnerState, number> = {
+            'DROP_RISK': Math.max(0.01, Math.pow(dropProb, 1.5) * 3.0),
+            'STRUGGLING': Math.max(0.01, (1.0 - perfRatio) * (0.6 + 2.0 * Math.max(0, 0.4 - Math.abs(dropProb - 0.5)))),
+            'FAST': Math.max(0.01, (1.0 - dropProb) * Math.pow(perfRatio, 2) * (completionRate >= 0.7 ? 2.5 : 0.8)),
+            'CONSISTENT': Math.max(0.01, (1.0 - dropProb) * (1.0 - Math.abs(perfRatio - 0.7) * 0.8) + 0.15)
         };
+
+        const totalWeight = Object.values(rawWeights).reduce((sum, w) => sum + w, 0) || 1.0;
+        const distribution: StateDistribution = {
+            'DROP_RISK': Number((rawWeights.DROP_RISK / totalWeight).toFixed(4)),
+            'STRUGGLING': Number((rawWeights.STRUGGLING / totalWeight).toFixed(4)),
+            'FAST': Number((rawWeights.FAST / totalWeight).toFixed(4)),
+            'CONSISTENT': Number((rawWeights.CONSISTENT / totalWeight).toFixed(4))
+        };
+
+        // Guarantee exact sum of 1.0000 by adjusting the largest category for rounding residue
+        const sumProbs = distribution.DROP_RISK + distribution.STRUGGLING + distribution.FAST + distribution.CONSISTENT;
+        const residue = 1.0 - sumProbs;
+        distribution[mlState] = Number((distribution[mlState] + residue).toFixed(4));
+
+        // 3. Derived confidenceScore (margin between top 2 states in 4-state distribution)
+        const sortedProbs = Object.values(distribution).sort((a, b) => b - a);
+        const margin = sortedProbs[0] - sortedProbs[1];
+        const confidenceScore = Math.min(1.0, Math.max(0.1, Number((margin * 2 + 0.2).toFixed(2))));
 
         return {
             state: mlState,
-            reason: `ML prediction (${mlPrediction.model_version}): ${mlPrediction.risk_level} risk (${(mlPrediction.probability * 100).toFixed(0)}%)`,
+            reason,
             metrics,
-            confidenceScore: mlPrediction.probability,
+            confidenceScore,
             distribution,
             decisionSource: 'ml_api',
             mlModelVersion: mlPrediction.model_version,
@@ -288,7 +383,7 @@ export async function determineLearnerState(userId: string): Promise<StateResult
         console.log('Using heuristic learner state determination');
     }
 
-    // 1. Calculate Raw Scores for each state
+    // 1. Calculate Raw Scores for each state using raw 0-100 scale metrics
     const scores: Record<LearnerState, number> = {
         'STRUGGLING': 0,
         'FAST': 0,
@@ -296,35 +391,39 @@ export async function determineLearnerState(userId: string): Promise<StateResult
         'DROP_RISK': 0
     };
 
-    // STRUGGLING Score
+    // STRUGGLING Score: low raw score or excessive retries
     if (metrics.totalAttempts > 0) {
-        const scoreFactor = Math.max(0, (60 - metrics.normalizedAvgScore) / 20);
+        const scoreFactor = Math.max(0, (60 - metrics.avgScore) / 20);
         const retryFactor = Math.max(0, metrics.retryRatio - 1.2);
         scores['STRUGGLING'] = scoreFactor + retryFactor;
     }
 
-    // FAST Score
+    // FAST Score: high raw score and high XP velocity
     if (metrics.totalAttempts > 0) {
-        const scoreFactor = Math.max(0, (metrics.normalizedAvgScore - 75) / 10);
-        const xpFactor = metrics.recentXP > 200 ? 1 : 0;
+        const scoreFactor = Math.max(0, (metrics.avgScore - 75) / 10);
+        const xpFactor = metrics.recent_xp_velocity > 30 ? 1 : 0;
         scores['FAST'] = scoreFactor + xpFactor;
     }
 
-    // DROP_RISK Score
+    // DROP_RISK Score: inactivity penalty
     scores['DROP_RISK'] = Math.min(3, Math.max(0, (daysSinceActive - 3) / 2));
 
-    // CONSISTENT Score
-    const varianceBonus = Math.max(0, 2 - (metrics.scoreVariance / 100));
+    // CONSISTENT Score: stability and completion follow-through
+    const varianceBonus = Math.max(0, 2 - (metrics.scoreVariance / 20));
     scores['CONSISTENT'] = 0.5 + varianceBonus + (metrics.completionRate * 1.5);
 
     // 2. Normalize to Probability Distribution
     const totalScore = Object.values(scores).reduce((a, b) => a + b, 0) || 1;
     const distribution: StateDistribution = {
-        'STRUGGLING': scores['STRUGGLING'] / totalScore,
-        'FAST': scores['FAST'] / totalScore,
-        'CONSISTENT': scores['CONSISTENT'] / totalScore,
-        'DROP_RISK': scores['DROP_RISK'] / totalScore
+        'STRUGGLING': Number((scores['STRUGGLING'] / totalScore).toFixed(4)),
+        'FAST': Number((scores['FAST'] / totalScore).toFixed(4)),
+        'CONSISTENT': Number((scores['CONSISTENT'] / totalScore).toFixed(4)),
+        'DROP_RISK': Number((scores['DROP_RISK'] / totalScore).toFixed(4))
     };
+
+    // Guarantee exact sum of 1.0000
+    const sumHeuristic = distribution.DROP_RISK + distribution.STRUGGLING + distribution.FAST + distribution.CONSISTENT;
+    const heuristicResidue = 1.0 - sumHeuristic;
 
     // 3. Determine Primary State and Confidence
     let primaryState: LearnerState = 'CONSISTENT';
@@ -341,8 +440,10 @@ export async function determineLearnerState(userId: string): Promise<StateResult
         }
     }
 
+    distribution[primaryState] = Number((distribution[primaryState] + heuristicResidue).toFixed(4));
+
     const margin = maxProb - secondMaxProb;
-    const confidenceScore = Math.min(1.0, margin * 2 + 0.2);
+    const confidenceScore = Math.min(1.0, Math.max(0.1, Number((margin * 2 + 0.2).toFixed(2))));
 
     // Generate reason
     let reason = '';

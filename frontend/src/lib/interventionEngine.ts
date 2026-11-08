@@ -25,21 +25,31 @@ export interface UserMetrics {
     recentXPVelocity: number;   // XP earned in last 7 days / 7
     avgCompletionTime: number;  // seconds
     completionRate: number;     // 0–1
-    dropoutProbability: number; // from ML model
+    dropoutProbability?: number | null; // from ML model if available
 }
 
 const DROPOUT_THRESHOLD = 0.70;
 const LOW_XP_THRESHOLD = 10;   // XP/day
-const SLOW_TIME_MULTIPLIER = 1.8;  // >1.8× dataset median (300s) = slow
-const DATASET_MEDIAN_TIME = 300;  // seconds — default
+const SLOW_TIME_MULTIPLIER = 1.8;  // >1.8× dataset median (599s) = slow
+const DATASET_MEDIAN_TIME = 599.0;  // seconds — dataset median from corpus
 const LOW_COMPLETION_RATE = 0.40;
 
 /**
  * Classify which intervention case applies (priority order: completionRate → time → xp).
+ * Evaluates ML model dropout probability if available, or falls back to heuristic risk rules.
  */
 export function classifyIntervention(metrics: UserMetrics): InterventionCase {
-    if (metrics.dropoutProbability < DROPOUT_THRESHOLD) return null;
+    // 1. Risk gate: verify whether user is in an at-risk state
+    if (metrics.dropoutProbability !== undefined && metrics.dropoutProbability !== null) {
+        if (metrics.dropoutProbability < DROPOUT_THRESHOLD) return null;
+    } else {
+        // Fallback when ML inference is unavailable: trigger if completion rate or velocity is severely impaired
+        const isHeuristicAtRisk = metrics.completionRate < LOW_COMPLETION_RATE ||
+            (metrics.recentXPVelocity < LOW_XP_THRESHOLD && metrics.completionRate < 0.60);
+        if (!isHeuristicAtRisk) return null;
+    }
 
+    // 2. Prioritize targeted remedial intervention
     if (metrics.completionRate < LOW_COMPLETION_RATE) {
         return 'LOW_COMPLETION_RATE';
     }
@@ -50,7 +60,7 @@ export function classifyIntervention(metrics: UserMetrics): InterventionCase {
         return 'LOW_XP_VELOCITY';
     }
 
-    // Generic — default to the most common recovery: XP velocity boost
+    // Generic recovery intervention: XP velocity boost
     return 'LOW_XP_VELOCITY';
 }
 
@@ -138,7 +148,7 @@ export async function logInterventionEvent(
  * Build UserMetrics object from Supabase data for a given user.
  * Used by QuestPage after quiz completion.
  */
-export async function fetchUserMetricsForIntervention(userId: string): Promise<UserMetrics> {
+export async function fetchUserMetricsForIntervention(userId: string, dropoutProbability?: number | null): Promise<UserMetrics> {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -175,5 +185,10 @@ export async function fetchUserMetricsForIntervention(userId: string): Promise<U
     const completionRate = attempts.length > 0
         ? completed.length / attempts.length : 0;
 
-    return { recentXPVelocity, avgCompletionTime, completionRate, dropoutProbability: 0 };
+    return {
+        recentXPVelocity,
+        avgCompletionTime,
+        completionRate,
+        dropoutProbability: dropoutProbability ?? null
+    };
 }

@@ -30,6 +30,7 @@ class DropRiskRequest(BaseModel):
 
 class DropRiskResponse(BaseModel):
     """Response schema for drop-risk prediction."""
+    model_config = {"protected_namespaces": ()}
     user_id: str
     probability: float
     risk_level: str          # "low" | "medium" | "high"
@@ -54,6 +55,7 @@ class InterventionRequest(BaseModel):
 
 class InterventionResponse(BaseModel):
     """Response schema for intervention recommendation."""
+    model_config = {"protected_namespaces": ()}
     user_id: str
     intervention_type: str   # "encouragement" | "hint" | "difficulty_decrease" | "break"
     expected_reward: float
@@ -76,6 +78,7 @@ class NextQuestRequest(BaseModel):
 
 class NextQuestResponse(BaseModel):
     """Response schema for next-quest recommendation."""
+    model_config = {"protected_namespaces": ()}
     user_id: str
     quest_id: str
     expected_reward: float

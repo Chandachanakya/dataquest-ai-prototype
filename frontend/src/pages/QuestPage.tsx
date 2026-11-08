@@ -28,6 +28,7 @@ import {
   type InterventionPayload,
 } from "@/lib/interventionEngine";
 import { predictDropRisk } from "@/lib/mlApiClient";
+import { extractLearnerFeatures } from "@/lib/learnerEngine";
 
 const QuestPage = () => {
   const { questId } = useParams<{ questId: string }>();
@@ -159,21 +160,9 @@ const QuestPage = () => {
 
     // ── ML dropout prediction → intervention ─────────────────────
     try {
-      const metrics = await fetchUserMetricsForIntervention(user.id);
-      const daysSince = 0; // just completed, so 0 days since active
-      const mlResult = await predictDropRisk(user.id, {
-        days_since_last_active: daysSince,
-        activity_frequency: metrics.recentXPVelocity,
-        average_score: accuracyPct,
-        total_attempts: profile.completed_quests + 1,
-        completion_time_vs_median: completionTimeSec
-          ? completionTimeSec / 300 : 1.0,
-        retry_ratio: 1.0,
-        score_variance: 0,
-        recent_xp_velocity: metrics.recentXPVelocity,
-        completion_rate: metrics.completionRate,
-        avg_difficulty: 2,
-      });
+      const mlFeatures = await extractLearnerFeatures(user.id);
+      const mlResult = await predictDropRisk(user.id, mlFeatures as any);
+      const metrics = await fetchUserMetricsForIntervention(user.id, mlResult?.probability);
 
       if (mlResult) {
         const prob = mlResult.probability;

@@ -28,7 +28,7 @@ FEATURE_ORDER = [
 ]
 
 FEATURE_DEFAULTS = {
-    'days_since_last_active': 0.0,
+    'days_since_last_active': 30.0,
     'activity_frequency': 0.0,
     'average_score': 0.0,
     'total_attempts': 0.0,
@@ -36,14 +36,51 @@ FEATURE_DEFAULTS = {
     'retry_ratio': 1.0,
     'score_variance': 0.0,
     'recent_xp_velocity': 0.0,
-    'completion_rate': 0.5,
-    'avg_difficulty': 3.0,
+    'completion_rate': 0.0,
+    'avg_difficulty': 1.0,
 }
 
 
-def extract_features(request: DropRiskRequest) -> np.ndarray:
+def sanitize_feature_value(name: str, raw_val: Any) -> float:
+    """Validate, clean, and clamp a feature value to its valid domain."""
+    default = FEATURE_DEFAULTS[name]
+    if raw_val is None:
+        return default
+    try:
+        val = float(raw_val)
+        if np.isnan(val) or np.isinf(val):
+            return default
+    except (ValueError, TypeError):
+        return default
+
+    # Plausible realistic domain bounds
+    if name == 'days_since_last_active':
+        return max(0.0, min(365.0, val))
+    elif name == 'activity_frequency':
+        return max(0.0, min(30.0, val))
+    elif name == 'average_score':
+        return max(0.0, min(1000.0, val))
+    elif name == 'total_attempts':
+        return max(0.0, val)
+    elif name == 'completion_time_vs_median':
+        return max(0.05, min(20.0, val))
+    elif name == 'retry_ratio':
+        return max(1.0, min(50.0, val))
+    elif name == 'score_variance':
+        return max(0.0, val)
+    elif name == 'recent_xp_velocity':
+        return max(0.0, val)
+    elif name == 'completion_rate':
+        return max(0.0, min(1.0, val))
+    elif name == 'avg_difficulty':
+        return max(1.0, min(6.0, val))
+    return val
+
+
+def extract_features(request: DropRiskRequest) -> Tuple[np.ndarray, Dict[str, float]]:
     """
     Build a 1×10 numpy feature array from a DropRiskRequest.
+    Preserves exact training feature order and guarantees all 10 features are valid.
 
     Priority:
     1. `request.features` dict (if provided)
@@ -53,11 +90,10 @@ def extract_features(request: DropRiskRequest) -> np.ndarray:
     values: Dict[str, float] = {}
 
     if request.features:
-        # Merge provided dict with defaults for missing keys
         for feat in FEATURE_ORDER:
-            values[feat] = request.features.get(feat, FEATURE_DEFAULTS[feat])
+            raw = request.features.get(feat)
+            values[feat] = sanitize_feature_value(feat, raw)
     else:
-        # Use individual fields; fall back to defaults for None/missing
         field_map = {
             'days_since_last_active': request.days_since_last_active,
             'activity_frequency': request.activity_frequency,
@@ -72,7 +108,7 @@ def extract_features(request: DropRiskRequest) -> np.ndarray:
         }
         for feat in FEATURE_ORDER:
             raw = field_map.get(feat)
-            values[feat] = float(raw) if raw is not None else FEATURE_DEFAULTS[feat]
+            values[feat] = sanitize_feature_value(feat, raw)
 
     vector = np.array([values[f] for f in FEATURE_ORDER], dtype=float)
     return vector.reshape(1, -1), values
@@ -85,7 +121,12 @@ def extract_features(request: DropRiskRequest) -> np.ndarray:
 def predict_drop_risk(model, features: np.ndarray) -> float:
     """
     Return drop-risk probability using the loaded sklearn model.
+    Wraps input array into a DataFrame with feature names if the model expects them.
     """
+    if hasattr(model, 'feature_names_in_'):
+        import pandas as pd
+        df = pd.DataFrame(features, columns=FEATURE_ORDER)
+        return float(model.predict_proba(df)[0][1])
     return float(model.predict_proba(features)[0][1])
 
 
