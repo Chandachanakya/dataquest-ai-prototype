@@ -15,4 +15,16 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  ...(mode === "learner-regression" ? {
+    build: {
+      target: "node20",
+      outDir: ".regression-build",
+      emptyOutDir: true,
+      lib: {
+        entry: path.resolve(__dirname, "./tests/learnerEngine.regression.ts"),
+        formats: ["es"],
+        fileName: "learnerEngine.regression",
+      },
+    },
+  } : {}),
 }));

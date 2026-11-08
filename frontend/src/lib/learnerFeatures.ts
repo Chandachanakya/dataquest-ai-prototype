@@ -24,6 +24,24 @@ export interface MLFeatures {
   avg_difficulty: number;
 }
 
+export type TimestampedFeatureAttempt = FeatureAttempt & { timestamp: number };
+
+/**
+ * The single eligibility rule for lifetime learner data. Records without a
+ * parseable timestamp, or dated after the evaluation time, are not evidence
+ * about the learner and must not influence features or UI metrics.
+ */
+export function filterAttemptsAtReferenceTime(
+  attempts: FeatureAttempt[],
+  referenceTime: string | Date = new Date(),
+): TimestampedFeatureAttempt[] {
+  const referenceTimestamp = new Date(referenceTime).getTime();
+  if (!Number.isFinite(referenceTimestamp)) return [];
+  return attempts
+    .map(attempt => ({ ...attempt, timestamp: new Date(attempt.started_at).getTime() }))
+    .filter(attempt => Number.isFinite(attempt.timestamp) && attempt.timestamp <= referenceTimestamp);
+}
+
 /** Cold start is a lifecycle state: only zero lifetime attempts is new. */
 export const isNewLearner = (totalAttempts: number): boolean => totalAttempts === 0;
 
@@ -35,8 +53,7 @@ const finite = (value: unknown, fallback: number) => {
 /** Lifetime features, evaluated at `referenceTime` (not browser wall clock in tests). */
 export function calculateFeatureVector(attempts: FeatureAttempt[], referenceTime: string | Date = new Date()): MLFeatures {
   const ref = new Date(referenceTime).getTime();
-  const safe = attempts.map(a => ({ ...a, timestamp: new Date(a.started_at).getTime() }))
-    .filter(a => Number.isFinite(a.timestamp) && a.timestamp <= ref);
+  const safe = filterAttemptsAtReferenceTime(attempts, referenceTime);
   if (!safe.length) return { days_since_last_active: 30, activity_frequency: 0, average_score: 0,
     total_attempts: 0, completion_time_vs_median: 1, retry_ratio: 1, score_variance: 0,
     recent_xp_velocity: 0, completion_rate: 0, avg_difficulty: 1 };

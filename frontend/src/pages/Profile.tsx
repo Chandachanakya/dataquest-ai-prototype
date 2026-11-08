@@ -95,7 +95,8 @@ const Profile = () => {
 
       if (error) {
         // If admin delete fails, try regular account deletion
-        const { error: deleteError } = await supabase.rpc('delete_user');
+        // The generated database schema does not include this deployed RPC yet.
+        const { error: deleteError } = await supabase.rpc('delete_user' as never);
 
         if (deleteError) {
           throw deleteError;

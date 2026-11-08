@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
-import { Tables } from "@/integrations/supabase/types";
+import { Tables } from "@/lib/database.types";
 import { ArrowLeft, MessageSquare, ThumbsUp, Send, Plus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {

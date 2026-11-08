@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "test:learner-engine": "vite build --mode learner-regression && node .regression-build/learnerEngine.regression.js",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview --host"

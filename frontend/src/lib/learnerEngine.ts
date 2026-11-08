@@ -13,7 +13,8 @@ import { getOptimalQuestSequence, getAdaptiveDifficultyLevel, selectBestInterven
 import { predictDropRisk, getMLApiStatus } from './mlApiClient';
 import { getUserExperimentGroup, type ExperimentGroup } from './experimentService';
 import type { Quest } from './types';
-import { calculateFeatureVector, DATASET_MEDIAN_TIME, DIFFICULTY_NUMERIC_MAP, isNewLearner, type MLFeatures } from './learnerFeatures';
+import type { Json } from './database.types';
+import { calculateFeatureVector, filterAttemptsAtReferenceTime, DATASET_MEDIAN_TIME, DIFFICULTY_NUMERIC_MAP, isNewLearner, type FeatureAttempt, type MLFeatures } from './learnerFeatures';
 
 /**
  * RECOMPUTE POLICY (Phase 0 - Defensible AI)
@@ -65,13 +66,37 @@ export interface LearnerMetrics extends MLFeatures {
 }
 
 export type StateDistribution = Record<LearnerState, number>;
+type ClassifiedLearnerState = Exclude<LearnerState, 'NEW_LEARNER'>;
+
+const classifiedStates: ClassifiedLearnerState[] = ['STRUGGLING', 'FAST', 'CONSISTENT', 'DROP_RISK'];
+
+/** Rule weights are a ranking aid, not calibrated probabilities. */
+function normalizeStateWeights(weights: Record<ClassifiedLearnerState, number>): StateDistribution {
+    const total = classifiedStates.reduce((sum, state) => sum + Math.max(0, weights[state]), 0) || 1;
+    const distribution: StateDistribution = {
+        NEW_LEARNER: 0,
+        STRUGGLING: 0,
+        FAST: 0,
+        CONSISTENT: 0,
+        DROP_RISK: 0,
+    };
+    for (const state of classifiedStates) distribution[state] = Number((Math.max(0, weights[state]) / total).toFixed(4));
+    const primary = stateDistributionArgmax(distribution);
+    distribution[primary] = Number((distribution[primary] + (1 - Object.values(distribution).reduce((sum, value) => sum + value, 0))).toFixed(4));
+    return distribution;
+}
+
+export function stateDistributionArgmax(distribution: StateDistribution): LearnerState {
+    return (Object.entries(distribution) as [LearnerState, number][])
+        .reduce((best, candidate) => candidate[1] > best[1] ? candidate : best)[0];
+}
 
 export interface StateResult {
     state: LearnerState; // The primary state (highest probability)
     reason: string;
     metrics: LearnerMetrics;
-    confidenceScore: number; // Decision confidence (margin between top states)
-    distribution: StateDistribution; // Normalized probability distribution summing to 1.0
+    confidenceScore: number; // Heuristic separation score, not a statistically calibrated confidence
+    distribution: StateDistribution; // Normalized rule-allocation values summing to 1.0
     decisionSource?: 'ml_api' | 'heuristic' | 'cold_start'; // Track prediction source
     mlModelVersion?: string; // ML model version if used
     experimentGroup?: ExperimentGroup; // A/B test group assignment
@@ -84,48 +109,58 @@ export { DIFFICULTY_NUMERIC_MAP, DATASET_MEDIAN_TIME } from './learnerFeatures';
  * Calculate learner metrics from quest_attempts with unified feature definitions.
  * Conforms strictly to backend/ml_pipeline/engineer_features.py.
  */
-async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
+type EngineAttempt = FeatureAttempt & { user_id?: string };
+
+/** Fetch failures are deliberately fatal: an unavailable history is not an empty history. */
+async function calculateMetrics(
+    userId: string,
+    client: typeof supabase = supabase,
+    referenceTime: string | Date = new Date(),
+): Promise<LearnerMetrics> {
     // Lifetime history is required for model features and cold-start eligibility.
-    const { data: attempts, error } = await supabase
+    const { data: attempts, error } = await client
         .from('quest_attempts')
         .select('*')
         .eq('user_id', userId);
 
-    if (error) {
-        console.error('Error fetching attempts:', error);
-    }
+    if (error) throw new Error(`Unable to fetch quest attempts: ${error.message}`);
+    if (!attempts) throw new Error('Unable to fetch quest attempts: query returned no data');
 
-    const safeAttempts = attempts || [];
+    // This is the authoritative collection for every metric below.
+    const validAttempts = filterAttemptsAtReferenceTime(attempts as EngineAttempt[], referenceTime);
 
     // Fetch quest details for difficulty mapping
-    const questIds = [...new Set(safeAttempts.map(a => a.quest_id))];
+    const questIds = [...new Set(validAttempts.map(a => a.quest_id))];
     let questDifficultyMap = new Map<string, number>();
 
     if (questIds.length > 0) {
-        const { data: quests } = await supabase
+        const { data: quests, error: questError } = await client
             .from('quests')
             .select('id, difficulty')
             .in('id', questIds);
 
-        questDifficultyMap = new Map(
-            quests?.map(q => [q.id, DIFFICULTY_NUMERIC_MAP[q.difficulty] || 1]) || []
-        );
+        if (questError) throw new Error(`Unable to fetch quest difficulties: ${questError.message}`);
+        if (!quests) throw new Error('Unable to fetch quest difficulties: query returned no data');
+        // A missing/unknown label is a genuine missing value and uses the documented
+        // baseline (1); it is not used to conceal a failed lookup.
+        questDifficultyMap = new Map(quests.map(q => [q.id, DIFFICULTY_NUMERIC_MAP[q.difficulty] ?? 1]));
     }
 
-    const featureAttempts = safeAttempts.map(a => ({ ...a, difficulty: questDifficultyMap.get(a.quest_id) || 1 }));
-    const featureValues = calculateFeatureVector(featureAttempts);
+    const featureAttempts = validAttempts.map(a => ({ ...a, difficulty: questDifficultyMap.get(a.quest_id) ?? 1 }));
+    const featureValues = calculateFeatureVector(featureAttempts, referenceTime);
     const totalAttempts = featureValues.total_attempts;
-    const completedAttempts = safeAttempts.filter(a => a.status === 'completed');
+    const completedAttempts = featureAttempts.filter(a => a.status === 'completed');
 
     // last-ever activity is lifetime; rolling windows are handled by calculateFeatureVector.
-    const lastActiveDate = safeAttempts.length > 0
-        ? new Date(Math.max(...safeAttempts.map(a => new Date(a.started_at).getTime())))
+    const lastActiveDate = featureAttempts.length > 0
+        ? new Date(Math.max(...featureAttempts.map(a => a.timestamp)))
         : null;
     // Convenience metrics used by the UI.
     let rawScoreSum = 0;
 
-    safeAttempts.forEach(a => {
-        const rawScore = Number(a.score) || 0;
+    featureAttempts.forEach(a => {
+        const candidate = Number(a.score);
+        const rawScore = Number.isFinite(candidate) ? candidate : 0;
         rawScoreSum += rawScore;
     });
 
@@ -142,11 +177,13 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
     const avgDifficulty = featureValues.avg_difficulty;
 
     // Profile XP for streak/gamification checks
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await client
         .from('profiles')
         .select('xp')
         .eq('id', userId)
         .single();
+
+    if (profileError) throw new Error(`Unable to fetch learner profile: ${profileError.message}`);
 
     return {
         // Authoritative 10 ML Features
@@ -158,7 +195,7 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
         totalAttempts,
         avgCompletionTime: Math.round(meanCompletionTime),
         lastActiveDate,
-        recentXP: profile?.xp || 0,
+        recentXP: Number.isFinite(Number(profile?.xp)) ? Number(profile?.xp) : 0,
         retryRatio: Number(retryRatio.toFixed(2)),
         scoreVariance: Number(scoreVariance.toFixed(2)),
         completionRate: Number(completionRate.toFixed(2)),
@@ -167,6 +204,15 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
         completionTimeVsMedian: Number(completionTimeVsMedian.toFixed(2)),
         recentXpVelocity: Number(featureValues.recent_xp_velocity.toFixed(2)),
     };
+}
+
+/** Test seam for database failure and temporal-data regression tests. */
+export async function calculateLearnerMetricsForTesting(
+    userId: string,
+    client: typeof supabase,
+    referenceTime: string | Date,
+): Promise<LearnerMetrics> {
+    return calculateMetrics(userId, client, referenceTime);
 }
 
 /**
@@ -309,26 +355,20 @@ export async function determineLearnerState(userId: string): Promise<StateResult
             }
         }
 
-        // 2. Mathematically valid 4-state probability distribution (sums strictly to 1.0)
-        const rawWeights: Record<LearnerState, number> = {
+        // The ML API supplies only dropout risk. These hand-crafted weights allocate
+        // the four product states and are not calibrated class probabilities.
+        const rawWeights: Record<ClassifiedLearnerState, number> = {
             'DROP_RISK': Math.max(0.01, Math.pow(dropProb, 1.5) * 3.0),
             'STRUGGLING': Math.max(0.01, (1.0 - perfRatio) * (0.6 + 2.0 * Math.max(0, 0.4 - Math.abs(dropProb - 0.5)))),
             'FAST': Math.max(0.01, (1.0 - dropProb) * Math.pow(perfRatio, 2) * (completionRate >= 0.7 ? 2.5 : 0.8)),
             'CONSISTENT': Math.max(0.01, (1.0 - dropProb) * (1.0 - Math.abs(perfRatio - 0.7) * 0.8) + 0.15)
         };
 
-        const totalWeight = Object.values(rawWeights).reduce((sum, w) => sum + w, 0) || 1.0;
-        const distribution: StateDistribution = {
-            'DROP_RISK': Number((rawWeights.DROP_RISK / totalWeight).toFixed(4)),
-            'STRUGGLING': Number((rawWeights.STRUGGLING / totalWeight).toFixed(4)),
-            'FAST': Number((rawWeights.FAST / totalWeight).toFixed(4)),
-            'CONSISTENT': Number((rawWeights.CONSISTENT / totalWeight).toFixed(4))
-        };
-
-        // Guarantee exact sum of 1.0000 by adjusting the largest category for rounding residue
-        const sumProbs = distribution.DROP_RISK + distribution.STRUGGLING + distribution.FAST + distribution.CONSISTENT;
-        const residue = 1.0 - sumProbs;
-        distribution[mlState] = Number((distribution[mlState] + residue).toFixed(4));
+        const distribution = normalizeStateWeights(rawWeights);
+        const primaryState = stateDistributionArgmax(distribution);
+        if (primaryState !== mlState) {
+            reason += ` The Random Forest estimate is dropout risk; the displayed ${primaryState} state is the highest rule-based state allocation.`;
+        }
 
         // 3. Derived confidenceScore (margin between top 2 states in 4-state distribution)
         const sortedProbs = Object.values(distribution).sort((a, b) => b - a);
@@ -336,7 +376,7 @@ export async function determineLearnerState(userId: string): Promise<StateResult
         const confidenceScore = Math.min(1.0, Math.max(0.1, Number((margin * 2 + 0.2).toFixed(2))));
 
         return {
-            state: mlState,
+            state: primaryState,
             reason,
             metrics,
             confidenceScore,
@@ -357,7 +397,7 @@ export async function determineLearnerState(userId: string): Promise<StateResult
     }
 
     // 1. Calculate Raw Scores for each state using raw 0-100 scale metrics
-    const scores: Record<LearnerState, number> = {
+    const scores: Record<ClassifiedLearnerState, number> = {
         'STRUGGLING': 0,
         'FAST': 0,
         'CONSISTENT': 0,
@@ -386,36 +426,10 @@ export async function determineLearnerState(userId: string): Promise<StateResult
     scores['CONSISTENT'] = 0.5 + varianceBonus + (metrics.completionRate * 1.5);
 
     // 2. Normalize to Probability Distribution
-    const totalScore = Object.values(scores).reduce((a, b) => a + b, 0) || 1;
-    const distribution: StateDistribution = {
-        'STRUGGLING': Number((scores['STRUGGLING'] / totalScore).toFixed(4)),
-        'FAST': Number((scores['FAST'] / totalScore).toFixed(4)),
-        'CONSISTENT': Number((scores['CONSISTENT'] / totalScore).toFixed(4)),
-        'DROP_RISK': Number((scores['DROP_RISK'] / totalScore).toFixed(4))
-    };
-
-    // Guarantee exact sum of 1.0000
-    const sumHeuristic = distribution.DROP_RISK + distribution.STRUGGLING + distribution.FAST + distribution.CONSISTENT;
-    const heuristicResidue = 1.0 - sumHeuristic;
-
-    // 3. Determine Primary State and Confidence
-    let primaryState: LearnerState = 'CONSISTENT';
-    let maxProb = -1;
-    let secondMaxProb = -1;
-
-    for (const [state, prob] of Object.entries(distribution) as [LearnerState, number][]) {
-        if (prob > maxProb) {
-            secondMaxProb = maxProb;
-            maxProb = prob;
-            primaryState = state;
-        } else if (prob > secondMaxProb) {
-            secondMaxProb = prob;
-        }
-    }
-
-    distribution[primaryState] = Number((distribution[primaryState] + heuristicResidue).toFixed(4));
-
-    const margin = maxProb - secondMaxProb;
+    const distribution = normalizeStateWeights(scores);
+    const primaryState = stateDistributionArgmax(distribution);
+    const sortedHeuristic = Object.values(distribution).sort((a, b) => b - a);
+    const margin = sortedHeuristic[0] - sortedHeuristic[1];
     const confidenceScore = Math.min(1.0, Math.max(0.1, Number((margin * 2 + 0.2).toFixed(2))));
 
     // Generate reason
@@ -485,7 +499,7 @@ async function logDecision(
             dropout_probability: metadata.dropout_probability ?? null,
             intervention_case: metadata.intervention_case ?? null,
             intervention_accepted: metadata.intervention_accepted ?? null,
-        },
+        } as unknown as Json,
         timestamp: new Date().toISOString()
     });
 }

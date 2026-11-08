@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
-import { Tables } from "@/integrations/supabase/types";
+import { Tables } from "@/lib/database.types";
 import { Quest } from "@/lib/types";
 import { ArrowLeft, Swords, Trophy, Users, Plus, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
