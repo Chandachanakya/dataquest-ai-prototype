@@ -44,7 +44,7 @@ def print_info(message):
 
 
 # Test 1: Health Check
-def test_health_check():
+def run_health_check():
     print_test("Health Check")
     
     try:
@@ -68,7 +68,7 @@ def test_health_check():
 
 
 # Test 2: Drop Risk Prediction
-def test_drop_risk_prediction():
+def run_drop_risk_prediction():
     print_test("Drop Risk Prediction")
     
     # Test case 1: High risk user
@@ -154,7 +154,7 @@ def test_drop_risk_prediction():
 
 
 # Test 3: Intervention Recommendation
-def test_intervention_recommendation():
+def run_intervention_recommendation():
     print_test("Intervention Recommendation")
     
     payload = {
@@ -203,7 +203,7 @@ def test_intervention_recommendation():
 
 
 # Test 4: Next Quest Recommendation
-def test_next_quest_recommendation():
+def run_next_quest_recommendation():
     print_test("Next Quest Recommendation")
     
     payload = {
@@ -251,7 +251,7 @@ def test_next_quest_recommendation():
 
 
 # Test 5: Error Handling
-def test_error_handling():
+def run_error_handling():
     print_test("Error Handling")
     
     # Test invalid payload
@@ -284,6 +284,21 @@ def test_error_handling():
 
 
 # Main test runner
+def test_health_check():
+    assert run_health_check()
+
+def test_drop_risk_prediction():
+    assert run_drop_risk_prediction()
+
+def test_intervention_recommendation():
+    assert run_intervention_recommendation()
+
+def test_next_quest_recommendation():
+    assert run_next_quest_recommendation()
+
+def test_error_handling():
+    assert run_error_handling()
+
 def main():
     print(f"\n{BLUE}{'='*60}{RESET}")
     print(f"{BLUE}ML API INTEGRATION TEST SUITE{RESET}")
@@ -295,13 +310,13 @@ def main():
     results = {}
     
     # Run tests
-    results['health_check'] = test_health_check()
+    results['health_check'] = run_health_check()
     
     if results['health_check']:
-        results['drop_risk'] = test_drop_risk_prediction()
-        results['intervention'] = test_intervention_recommendation()
-        results['next_quest'] = test_next_quest_recommendation()
-        results['error_handling'] = test_error_handling()
+        results['drop_risk'] = run_drop_risk_prediction()
+        results['intervention'] = run_intervention_recommendation()
+        results['next_quest'] = run_next_quest_recommendation()
+        results['error_handling'] = run_error_handling()
     else:
         print_error("\nSkipping remaining tests - API is not available")
         results['drop_risk'] = False
