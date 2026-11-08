@@ -253,33 +253,40 @@ def run_next_quest_recommendation():
 # Test 5: Error Handling
 def run_error_handling():
     print_test("Error Handling")
-    
-    # Test invalid payload
-    print_info("Test Case: Invalid payload (missing required fields)")
-    payload = {
-        "user_id": TEST_USER_ID
-        # Missing required features
-    }
-    
+
+    invalid_payloads = [
+        ("missing required user_id", {}),
+        ("invalid numeric feature type", {"user_id": TEST_USER_ID, "days_since_last_active": []}),
+    ]
+
     try:
-        response = requests.post(
-            f"{ML_API_URL}/predict/drop-risk",
-            json=payload,
-            timeout=5
-        )
-        
-        # Should still return 200 with mock prediction
-        if response.status_code == 200:
-            print_success("API handles missing features gracefully")
+        for description, payload in invalid_payloads:
+            print_info(f"Test Case: Invalid payload ({description})")
+            response = requests.post(
+                f"{ML_API_URL}/predict/drop-risk",
+                json=payload,
+                timeout=5
+            )
+
+            assert response.status_code == 422, (
+                f"Expected HTTP 422 for {description}, got {response.status_code}: {response.text}"
+            )
             data = response.json()
-            print_info(f"Risk Level: {data['risk_level']}")
-        else:
-            print_warning(f"API returned error: {response.status_code}")
-            
+            assert isinstance(data.get('detail'), list) and data['detail'], (
+                f"Expected non-empty validation error details, got: {data}"
+            )
+            assert all(
+                isinstance(error, dict)
+                and isinstance(error.get('loc'), list)
+                and isinstance(error.get('msg'), str)
+                and isinstance(error.get('type'), str)
+                for error in data['detail']
+            ), f"Expected FastAPI/Pydantic validation errors, got: {data}"
+            print_success("API returned a valid 422 validation response")
     except requests.exceptions.RequestException as e:
         print_error(f"Request failed: {e}")
         return False
-    
+
     return True
 
 

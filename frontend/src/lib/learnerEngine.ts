@@ -32,18 +32,9 @@ export type LearnerState = 'STRUGGLING' | 'FAST' | 'CONSISTENT' | 'DROP_RISK' | 
  * COLD-START POLICY (Phase 4)
  *
  * NEW_LEARNER is an onboarding lifecycle state, not an inactivity label.
- * A learner with 0 attempts produces an out-of-distribution feature vector
- * (activity_frequency = 0, total_attempts = 0, average_score = 0, etc.)
- * which the model cannot evaluate reliably. Empirically, this produces
- * a dropout probability of ~0.99 — not because the learner is likely to
- * drop, but because the input vector lies entirely outside the model's
- * training distribution.
- *
- * Policy: only zero lifetime attempts bypass inference and receive onboarding.
- *
- * Learners with one or more attempts remain in the normal dropout-risk and
- * starts producing discrimination (P ≈ 0.55 for typical early learners),
- * rule-based state flow; they are not cold-start users.
+ * Exactly zero lifetime attempts receive NEW_LEARNER and bypass normal
+ * learner-state evaluation. Learners with one or more valid lifetime attempts
+ * remain in the normal learner-state evaluation flow.
  */
 
 /** Authoritative 10-feature vector matching backend model training order */
@@ -291,12 +282,8 @@ export async function determineLearnerState(userId: string, dependencies: Learne
         : 30;
 
     // ── COLD-START GUARD (Phase 4) ────────────────────────────────────────────
-    // The Random Forest was trained on learners with at least 1 attempt and
-    // Any learner with recorded attempts remains in the normal state flow.
-    // It does not imply a five-attempt cold-start threshold.
-    // probabilities (empirically ≥ 0.86 for 1–2 attempts).
-    // We assign NEW_LEARNER only when there are zero lifetime attempts.
-    // NEW_LEARNER is reserved for zero lifetime history; dormant learners retain history.
+    // Assign NEW_LEARNER only to learners with zero lifetime attempts.
+    // Any learner with one or more valid lifetime attempts uses the normal state flow.
     if (isNewLearner(metrics.total_attempts)) {
         const experimentGroup = await experimentGroupFor(userId, 'ml_vs_heuristic');
         const coldStartDistribution: StateDistribution = {
