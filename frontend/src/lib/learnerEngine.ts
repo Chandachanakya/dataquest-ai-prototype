@@ -41,9 +41,9 @@ export type LearnerState = 'STRUGGLING' | 'FAST' | 'CONSISTENT' | 'DROP_RISK' | 
  *
  * Policy: only zero lifetime attempts bypass inference and receive onboarding.
  *
- * This threshold (5) was chosen empirically: at 5 attempts the model
+ * Learners with one or more attempts remain in the normal dropout-risk and
  * starts producing discrimination (P ≈ 0.55 for typical early learners),
- * whereas below 3 attempts the prediction is unreliably high (P > 0.86).
+ * rule-based state flow; they are not cold-start users.
  */
 
 /** Authoritative 10-feature vector matching backend model training order */
@@ -71,7 +71,7 @@ type ClassifiedLearnerState = Exclude<LearnerState, 'NEW_LEARNER'>;
 const classifiedStates: ClassifiedLearnerState[] = ['STRUGGLING', 'FAST', 'CONSISTENT', 'DROP_RISK'];
 
 /** Rule weights are a ranking aid, not calibrated probabilities. */
-function normalizeStateWeights(weights: Record<ClassifiedLearnerState, number>): StateDistribution {
+export function normalizeStateWeights(weights: Record<ClassifiedLearnerState, number>): StateDistribution {
     const total = classifiedStates.reduce((sum, state) => sum + Math.max(0, weights[state]), 0) || 1;
     const distribution: StateDistribution = {
         NEW_LEARNER: 0,
@@ -92,7 +92,7 @@ export function stateDistributionArgmax(distribution: StateDistribution): Learne
 }
 
 export interface StateResult {
-    state: LearnerState; // The primary state (highest probability)
+    state: LearnerState; // The primary state (highest rule-based allocation)
     reason: string;
     metrics: LearnerMetrics;
     confidenceScore: number; // Heuristic separation score, not a statistically calibrated confidence
@@ -262,7 +262,7 @@ function calculateConfidence(totalAttempts: number, daysSinceActive: number): nu
 }
 
 /**
- * Determine learner state based on metrics using Probabilistic Modeling (Phase 2)
+ * Determine learner state from model dropout risk and rule-based allocations.
  * 
  * PHASE 4 ML INTEGRATION:
  * - First attempts to use ML API for drop risk prediction if enabled
@@ -274,21 +274,31 @@ function calculateConfidence(totalAttempts: number, daysSinceActive: number): nu
  * - Forces ML (treatment) or heuristic (control) based on group
  * - Tracks experiment group in results
  */
-export async function determineLearnerState(userId: string): Promise<StateResult> {
-    const metrics = await calculateMetrics(userId);
+export interface LearnerEngineDependencies {
+    client?: typeof supabase;
+    referenceTime?: string | Date;
+    getExperimentGroup?: typeof getUserExperimentGroup;
+    predictDropRisk?: typeof predictDropRisk;
+}
+
+export async function determineLearnerState(userId: string, dependencies: LearnerEngineDependencies = {}): Promise<StateResult> {
+    const client = dependencies.client ?? supabase;
+    const experimentGroupFor = dependencies.getExperimentGroup ?? getUserExperimentGroup;
+    const predictRisk = dependencies.predictDropRisk ?? predictDropRisk;
+    const metrics = await calculateMetrics(userId, client, dependencies.referenceTime);
     const daysSinceActive = metrics.lastActiveDate
         ? (Date.now() - metrics.lastActiveDate.getTime()) / (1000 * 60 * 60 * 24)
         : 30;
 
     // ── COLD-START GUARD (Phase 4) ────────────────────────────────────────────
     // The Random Forest was trained on learners with at least 1 attempt and
-    // activity_frequency ≥ 1. A learner below MIN_ATTEMPTS_FOR_ML sits entirely
-    // outside the model's training distribution, producing spuriously high risk
+    // Any learner with recorded attempts remains in the normal state flow.
+    // It does not imply a five-attempt cold-start threshold.
     // probabilities (empirically ≥ 0.86 for 1–2 attempts).
-    // We bypass ML inference and assign NEW_LEARNER unconditionally in this case.
+    // We assign NEW_LEARNER only when there are zero lifetime attempts.
     // NEW_LEARNER is reserved for zero lifetime history; dormant learners retain history.
     if (isNewLearner(metrics.total_attempts)) {
-        const experimentGroup = await getUserExperimentGroup(userId, 'ml_vs_heuristic');
+        const experimentGroup = await experimentGroupFor(userId, 'ml_vs_heuristic');
         const coldStartDistribution: StateDistribution = {
             'NEW_LEARNER': 1.0000,
             'STRUGGLING': 0.0000,
@@ -308,7 +318,7 @@ export async function determineLearnerState(userId: string): Promise<StateResult
     }
 
     // PHASE 5: Check experiment assignment
-    const experimentGroup = await getUserExperimentGroup(userId, 'ml_vs_heuristic');
+    const experimentGroup = await experimentGroupFor(userId, 'ml_vs_heuristic');
     const forceML = experimentGroup === 'treatment';
     const forceHeuristic = experimentGroup === 'control';
 
@@ -327,7 +337,7 @@ export async function determineLearnerState(userId: string): Promise<StateResult
     };
 
     // Only try ML API if not forced to use heuristics
-    const mlPrediction = !forceHeuristic ? await predictDropRisk(userId, mlFeatures) : null;
+    const mlPrediction = !forceHeuristic ? await predictRisk(userId, mlFeatures) : null;
 
     if (mlPrediction && !forceHeuristic) {
         const dropProb = Math.max(0.0, Math.min(1.0, mlPrediction.probability));
@@ -340,7 +350,7 @@ export async function determineLearnerState(userId: string): Promise<StateResult
 
         if (dropProb >= 0.70 || mlPrediction.risk_level === 'high') {
             mlState = 'DROP_RISK';
-            reason = `ML prediction (${mlPrediction.model_version}): High churn risk (${(dropProb * 100).toFixed(0)}%). Inactivity or engagement deceleration detected.`;
+            reason = `Random Forest dropout-risk prediction (${mlPrediction.model_version}): high risk (${(dropProb * 100).toFixed(0)}%). Inactivity or engagement deceleration detected.`;
         } else if (dropProb >= 0.40 || mlPrediction.risk_level === 'medium') {
             mlState = 'STRUGGLING';
             reason = `ML prediction (${mlPrediction.model_version}): Moderate struggle/risk (${(dropProb * 100).toFixed(0)}%). Difficulties with content pace or persistence detected.`;
@@ -436,13 +446,13 @@ export async function determineLearnerState(userId: string): Promise<StateResult
     let reason = '';
     switch (primaryState) {
         case 'STRUGGLING':
-            reason = `High struggle probability (${(distribution.STRUGGLING * 100).toFixed(0)}%). Low scores or high retries detected.`;
+            reason = `Strong rule-based struggle indicator (${(distribution.STRUGGLING * 100).toFixed(0)}%). Low scores or high retries detected.`;
             break;
         case 'FAST':
             reason = `Identified as fast learner (${(distribution.FAST * 100).toFixed(0)}%). High efficiency and scores.`;
             break;
         case 'DROP_RISK':
-            reason = `High churn risk (${(distribution.DROP_RISK * 100).toFixed(0)}%). Inactive for ${Math.round(daysSinceActive)} days.`;
+            reason = `High rule-based dropout-risk allocation (${(distribution.DROP_RISK * 100).toFixed(0)}%). Inactive for ${Math.round(daysSinceActive)} days.`;
             break;
         case 'CONSISTENT':
             reason = `Steady progress detected (${(distribution.CONSISTENT * 100).toFixed(0)}%). Consistent performance.`;

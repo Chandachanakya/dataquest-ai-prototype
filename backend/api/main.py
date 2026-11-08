@@ -111,8 +111,8 @@ async def predict_drop_risk_endpoint(request: DropRiskRequest):
         features, feature_dict = extract_features(request)
         total_attempts = feature_dict.get('total_attempts', 0.0)
 
-        # Cold-start policy: Insufficient history to infer dropout risk (< 5 attempts)
-        # Only zero lifetime attempts are genuinely new; do not reset dormant users.
+        # Cold-start policy: exactly zero lifetime attempts is a new learner.
+        # Returning learners retain their history regardless of attempt count.
         if total_attempts == 0.0:
             return DropRiskResponse(
                 user_id=request.user_id,

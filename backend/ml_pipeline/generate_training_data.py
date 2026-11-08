@@ -169,7 +169,7 @@ def simulate_users(num_users: int = 1000, seed: int = RANDOM_SEED,
     
     start_date = generation_timestamp - timedelta(days=60)
     
-    print(f"\n🎭 Simulating {num_users} users...")
+    print(f"\nSimulating {num_users} users...")
     
     for i in range(num_users):
         rand = random.random()
