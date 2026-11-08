@@ -151,8 +151,9 @@ def generate_user_journey(user_id: str, persona: UserPersona, start_date: dateti
     
     return attempts
 
-def simulate_users(num_users: int = 1000) -> pd.DataFrame:
+def simulate_users(num_users: int = 1000, seed: int = 42) -> pd.DataFrame:
     """Simulate users and return as DataFrame."""
+    random.seed(seed)
     all_attempts = []
     
     persona_distribution = {

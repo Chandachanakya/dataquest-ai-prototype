@@ -1,338 +1,206 @@
-[
-  {
-    "scenario": "1. New learner (no attempts)",
-    "py_features": {
-      "days_since_last_active": 30.0,
-      "activity_frequency": 0.0,
-      "average_score": 0.0,
-      "total_attempts": 0.0,
-      "completion_time_vs_median": 1.0,
-      "retry_ratio": 1.0,
-      "score_variance": 0.0,
-      "recent_xp_velocity": 0.0,
-      "completion_rate": 0.0,
-      "avg_difficulty": 1.0,
-      "raw_avg_score": 0.0
+{
+  "baseline_seconds": 599.0,
+  "all_passed": true,
+  "scenarios": [
+    {
+      "scenario": "zero_attempt",
+      "python_features": {
+        "days_since_last_active": 30,
+        "activity_frequency": 0,
+        "average_score": 0,
+        "total_attempts": 0,
+        "completion_time_vs_median": 1,
+        "retry_ratio": 1,
+        "score_variance": 0,
+        "recent_xp_velocity": 0,
+        "completion_rate": 0,
+        "avg_difficulty": 1
+      },
+      "typescript_features": {
+        "days_since_last_active": 30,
+        "activity_frequency": 0,
+        "average_score": 0,
+        "total_attempts": 0,
+        "completion_time_vs_median": 1,
+        "retry_ratio": 1,
+        "score_variance": 0,
+        "recent_xp_velocity": 0,
+        "completion_rate": 0,
+        "avg_difficulty": 1
+      },
+      "absolute_differences": {
+        "days_since_last_active": 0,
+        "activity_frequency": 0,
+        "average_score": 0,
+        "total_attempts": 0,
+        "completion_time_vs_median": 0,
+        "retry_ratio": 0,
+        "score_variance": 0,
+        "recent_xp_velocity": 0,
+        "completion_rate": 0,
+        "avg_difficulty": 0
+      },
+      "passed": true
     },
-    "ts_features": {
-      "days_since_last_active": 30.0,
-      "activity_frequency": 0.0,
-      "average_score": 0.0,
-      "total_attempts": 0.0,
-      "completion_time_vs_median": 1.0,
-      "retry_ratio": 1.0,
-      "score_variance": 0.0,
-      "recent_xp_velocity": 0.0,
-      "completion_rate": 0.0,
-      "avg_difficulty": 1.0,
-      "raw_avg_score": 0.0
+    {
+      "scenario": "one_to_four_attempts",
+      "python_features": {
+        "days_since_last_active": 0.0,
+        "activity_frequency": 4,
+        "average_score": 256.25,
+        "total_attempts": 4,
+        "completion_time_vs_median": 0.6678,
+        "retry_ratio": 1.3333,
+        "score_variance": 12.91,
+        "recent_xp_velocity": 21.4286,
+        "completion_rate": 0.5,
+        "avg_difficulty": 2.5
+      },
+      "typescript_features": {
+        "days_since_last_active": 0,
+        "activity_frequency": 4,
+        "average_score": 256.25,
+        "total_attempts": 4,
+        "completion_time_vs_median": 0.6678,
+        "retry_ratio": 1.3333,
+        "score_variance": 12.91,
+        "recent_xp_velocity": 21.4286,
+        "completion_rate": 0.5,
+        "avg_difficulty": 2.5
+      },
+      "absolute_differences": {
+        "days_since_last_active": 0.0,
+        "activity_frequency": 0,
+        "average_score": 0.0,
+        "total_attempts": 0,
+        "completion_time_vs_median": 0.0,
+        "retry_ratio": 0.0,
+        "score_variance": 0.0,
+        "recent_xp_velocity": 0.0,
+        "completion_rate": 0.0,
+        "avg_difficulty": 0.0
+      },
+      "passed": true
     },
-    "max_delta": 0.0,
-    "rf_prob": 0.9900712973900343,
-    "lr_prob": 0.9999999954078618,
-    "rf_risk": "high",
-    "state": "DROP_RISK",
-    "confidence": 1.0,
-    "distribution": {
-      "DROP_RISK": 0.7945,
-      "STRUGGLING": 0.1613,
-      "FAST": 0.0027,
-      "CONSISTENT": 0.0415
+    {
+      "scenario": "exactly_five_boundary",
+      "python_features": {
+        "days_since_last_active": 0.0,
+        "activity_frequency": 5,
+        "average_score": 100.0,
+        "total_attempts": 5,
+        "completion_time_vs_median": 0.5008,
+        "retry_ratio": 1.0,
+        "score_variance": 15.81,
+        "recent_xp_velocity": 20.0,
+        "completion_rate": 0.6,
+        "avg_difficulty": 3.0
+      },
+      "typescript_features": {
+        "days_since_last_active": 0,
+        "activity_frequency": 5,
+        "average_score": 100,
+        "total_attempts": 5,
+        "completion_time_vs_median": 0.5008,
+        "retry_ratio": 1,
+        "score_variance": 15.81,
+        "recent_xp_velocity": 20,
+        "completion_rate": 0.6,
+        "avg_difficulty": 3
+      },
+      "absolute_differences": {
+        "days_since_last_active": 0.0,
+        "activity_frequency": 0,
+        "average_score": 0.0,
+        "total_attempts": 0,
+        "completion_time_vs_median": 0.0,
+        "retry_ratio": 0.0,
+        "score_variance": 0.0,
+        "recent_xp_velocity": 0.0,
+        "completion_rate": 0.0,
+        "avg_difficulty": 0.0
+      },
+      "passed": true
     },
-    "dist_sum": 1.0
-  },
-  {
-    "scenario": "2. Active learner (high scores)",
-    "py_features": {
-      "days_since_last_active": 0.2,
-      "activity_frequency": 6.0,
-      "average_score": 462.5,
-      "total_attempts": 6.0,
-      "completion_time_vs_median": 0.6956,
-      "retry_ratio": 1.0,
-      "score_variance": 5.24,
-      "recent_xp_velocity": 79.2857,
-      "completion_rate": 1.0,
-      "avg_difficulty": 2.0,
-      "raw_avg_score": 92.5
+    {
+      "scenario": "dormant_returning_over_30_days",
+      "python_features": {
+        "days_since_last_active": 67.0,
+        "activity_frequency": 0,
+        "average_score": 150.33,
+        "total_attempts": 2,
+        "completion_time_vs_median": 1.0184,
+        "retry_ratio": 1.0,
+        "score_variance": 7.78,
+        "recent_xp_velocity": 0.0,
+        "completion_rate": 0.5,
+        "avg_difficulty": 5.5
+      },
+      "typescript_features": {
+        "days_since_last_active": 67,
+        "activity_frequency": 0,
+        "average_score": 150.33,
+        "total_attempts": 2,
+        "completion_time_vs_median": 1.0184,
+        "retry_ratio": 1,
+        "score_variance": 7.78,
+        "recent_xp_velocity": 0,
+        "completion_rate": 0.5,
+        "avg_difficulty": 5.5
+      },
+      "absolute_differences": {
+        "days_since_last_active": 0.0,
+        "activity_frequency": 0,
+        "average_score": 0.0,
+        "total_attempts": 0,
+        "completion_time_vs_median": 0.0,
+        "retry_ratio": 0.0,
+        "score_variance": 0.0,
+        "recent_xp_velocity": 0.0,
+        "completion_rate": 0.0,
+        "avg_difficulty": 0.0
+      },
+      "passed": true
     },
-    "ts_features": {
-      "days_since_last_active": 0.2,
-      "activity_frequency": 6.0,
-      "average_score": 462.5,
-      "total_attempts": 6.0,
-      "completion_time_vs_median": 0.6956,
-      "retry_ratio": 1.0,
-      "score_variance": 5.24,
-      "recent_xp_velocity": 79.2857,
-      "completion_rate": 1.0,
-      "avg_difficulty": 2.0,
-      "raw_avg_score": 92.5
-    },
-    "max_delta": 0.0,
-    "rf_prob": 0.0383949798411586,
-    "lr_prob": 0.005789029821943704,
-    "rf_risk": "low",
-    "state": "FAST",
-    "confidence": 0.93,
-    "distribution": {
-      "DROP_RISK": 0.0074,
-      "STRUGGLING": 0.0147,
-      "FAST": 0.6715,
-      "CONSISTENT": 0.3064
-    },
-    "dist_sum": 1.0
-  },
-  {
-    "scenario": "3. Low scores & frequent retries",
-    "py_features": {
-      "days_since_last_active": 0.4,
-      "activity_frequency": 4.0,
-      "average_score": 162.5,
-      "total_attempts": 8.0,
-      "completion_time_vs_median": 1.4775,
-      "retry_ratio": 4.0,
-      "score_variance": 8.02,
-      "recent_xp_velocity": 37.1429,
-      "completion_rate": 0.25,
-      "avg_difficulty": 2.0,
-      "raw_avg_score": 32.5
-    },
-    "ts_features": {
-      "days_since_last_active": 0.4,
-      "activity_frequency": 4.0,
-      "average_score": 162.5,
-      "total_attempts": 8.0,
-      "completion_time_vs_median": 1.4775,
-      "retry_ratio": 4.0,
-      "score_variance": 8.02,
-      "recent_xp_velocity": 37.1429,
-      "completion_rate": 0.25,
-      "avg_difficulty": 2.0,
-      "raw_avg_score": 32.5
-    },
-    "max_delta": 0.0,
-    "rf_prob": 0.8515794223220132,
-    "lr_prob": 0.9999953450921493,
-    "rf_risk": "high",
-    "state": "DROP_RISK",
-    "confidence": 1.0,
-    "distribution": {
-      "DROP_RISK": 0.7618,
-      "STRUGGLING": 0.152,
-      "FAST": 0.0041,
-      "CONSISTENT": 0.0821
-    },
-    "dist_sum": 1.0
-  },
-  {
-    "scenario": "4. Inconsistent scores",
-    "py_features": {
-      "days_since_last_active": 0.3,
-      "activity_frequency": 4.0,
-      "average_score": 458.33,
-      "total_attempts": 5.0,
-      "completion_time_vs_median": 0.793,
-      "retry_ratio": 1.0,
-      "score_variance": 41.32,
-      "recent_xp_velocity": 44.2857,
-      "completion_rate": 0.8,
-      "avg_difficulty": 1.8,
-      "raw_avg_score": 62.0
-    },
-    "ts_features": {
-      "days_since_last_active": 0.3,
-      "activity_frequency": 4.0,
-      "average_score": 458.33,
-      "total_attempts": 5.0,
-      "completion_time_vs_median": 0.793,
-      "retry_ratio": 1.0,
-      "score_variance": 41.32,
-      "recent_xp_velocity": 44.2857,
-      "completion_rate": 0.8,
-      "avg_difficulty": 1.8,
-      "raw_avg_score": 62.0
-    },
-    "max_delta": 0.0,
-    "rf_prob": 0.5114455766167461,
-    "lr_prob": 0.9964563376344194,
-    "rf_risk": "medium",
-    "state": "STRUGGLING",
-    "confidence": 0.56,
-    "distribution": {
-      "DROP_RISK": 0.4068,
-      "STRUGGLING": 0.194,
-      "FAST": 0.1741,
-      "CONSISTENT": 0.2251
-    },
-    "dist_sum": 1.0
-  },
-  {
-    "scenario": "5. Inactive for several days",
-    "py_features": {
-      "days_since_last_active": 15.0,
-      "activity_frequency": 3.0,
-      "average_score": 658.33,
-      "total_attempts": 3.0,
-      "completion_time_vs_median": 0.8737,
-      "retry_ratio": 1.0,
-      "score_variance": 5.0,
-      "recent_xp_velocity": 0.0,
-      "completion_rate": 1.0,
-      "avg_difficulty": 1.33,
-      "raw_avg_score": 80.0
-    },
-    "ts_features": {
-      "days_since_last_active": 15.0,
-      "activity_frequency": 3.0,
-      "average_score": 658.33,
-      "total_attempts": 3.0,
-      "completion_time_vs_median": 0.8737,
-      "retry_ratio": 1.0,
-      "score_variance": 5.0,
-      "recent_xp_velocity": 0.0,
-      "completion_rate": 1.0,
-      "avg_difficulty": 1.33,
-      "raw_avg_score": 80.0
-    },
-    "max_delta": 0.0,
-    "rf_prob": 0.7862638146384907,
-    "lr_prob": 0.9905993488400441,
-    "rf_risk": "high",
-    "state": "DROP_RISK",
-    "confidence": 1.0,
-    "distribution": {
-      "DROP_RISK": 0.71,
-      "STRUGGLING": 0.0562,
-      "FAST": 0.1161,
-      "CONSISTENT": 0.1177
-    },
-    "dist_sum": 1.0
-  },
-  {
-    "scenario": "6. Incomplete quests (abandoned)",
-    "py_features": {
-      "days_since_last_active": 0.5,
-      "activity_frequency": 5.0,
-      "average_score": 126.67,
-      "total_attempts": 5.0,
-      "completion_time_vs_median": 1.0,
-      "retry_ratio": 1.0,
-      "score_variance": 7.91,
-      "recent_xp_velocity": 14.2857,
-      "completion_rate": 0.0,
-      "avg_difficulty": 1.8,
-      "raw_avg_score": 20.0
-    },
-    "ts_features": {
-      "days_since_last_active": 0.5,
-      "activity_frequency": 5.0,
-      "average_score": 126.67,
-      "total_attempts": 5.0,
-      "completion_time_vs_median": 1.0,
-      "retry_ratio": 1.0,
-      "score_variance": 7.91,
-      "recent_xp_velocity": 14.2857,
-      "completion_rate": 0.0,
-      "avg_difficulty": 1.8,
-      "raw_avg_score": 20.0
-    },
-    "max_delta": 0.0,
-    "rf_prob": 0.7589063472810896,
-    "lr_prob": 0.9999926854144766,
-    "rf_risk": "high",
-    "state": "DROP_RISK",
-    "confidence": 1.0,
-    "distribution": {
-      "DROP_RISK": 0.6626,
-      "STRUGGLING": 0.2357,
-      "FAST": 0.0033,
-      "CONSISTENT": 0.0984
-    },
-    "dist_sum": 1.0
-  },
-  {
-    "scenario": "7. Multiple attempts on same quest",
-    "py_features": {
-      "days_since_last_active": 0.2,
-      "activity_frequency": 5.0,
-      "average_score": 345.0,
-      "total_attempts": 5.0,
-      "completion_time_vs_median": 0.946,
-      "retry_ratio": 5.0,
-      "score_variance": 22.19,
-      "recent_xp_velocity": 49.2857,
-      "completion_rate": 0.6,
-      "avg_difficulty": 2.0,
-      "raw_avg_score": 69.0
-    },
-    "ts_features": {
-      "days_since_last_active": 0.2,
-      "activity_frequency": 5.0,
-      "average_score": 345.0,
-      "total_attempts": 5.0,
-      "completion_time_vs_median": 0.946,
-      "retry_ratio": 5.0,
-      "score_variance": 22.19,
-      "recent_xp_velocity": 49.2857,
-      "completion_rate": 0.6,
-      "avg_difficulty": 2.0,
-      "raw_avg_score": 69.0
-    },
-    "max_delta": 0.0,
-    "rf_prob": 0.6981122965638751,
-    "lr_prob": 0.9997979985492919,
-    "rf_risk": "medium",
-    "state": "STRUGGLING",
-    "confidence": 1.0,
-    "distribution": {
-      "DROP_RISK": 0.6665,
-      "STRUGGLING": 0.1185,
-      "FAST": 0.0438,
-      "CONSISTENT": 0.1712
-    },
-    "dist_sum": 0.9999999999999999
-  },
-  {
-    "scenario": "8. Consistent learner (steady pace)",
-    "py_features": {
-      "days_since_last_active": 0.3,
-      "activity_frequency": 7.0,
-      "average_score": 496.43,
-      "total_attempts": 7.0,
-      "completion_time_vs_median": 0.9488,
-      "retry_ratio": 1.1667,
-      "score_variance": 2.5,
-      "recent_xp_velocity": 69.2857,
-      "completion_rate": 0.8571,
-      "avg_difficulty": 1.57,
-      "raw_avg_score": 69.3
-    },
-    "ts_features": {
-      "days_since_last_active": 0.3,
-      "activity_frequency": 7.0,
-      "average_score": 496.43,
-      "total_attempts": 7.0,
-      "completion_time_vs_median": 0.9488,
-      "retry_ratio": 1.1667,
-      "score_variance": 2.5,
-      "recent_xp_velocity": 69.2857,
-      "completion_rate": 0.8571,
-      "avg_difficulty": 1.57,
-      "raw_avg_score": 69.3
-    },
-    "max_delta": 0.0,
-    "rf_prob": 0.25,
-    "lr_prob": 0.015603744389930252,
-    "rf_risk": "low",
-    "state": "CONSISTENT",
-    "confidence": 0.2,
-    "distribution": {
-      "DROP_RISK": 0.1532,
-      "STRUGGLING": 0.1129,
-      "FAST": 0.3679,
-      "CONSISTENT": 0.366
-    },
-    "dist_sum": 1.0
-  }
-]
+    {
+      "scenario": "returning_and_invalid_values",
+      "python_features": {
+        "days_since_last_active": 0.0,
+        "activity_frequency": 2,
+        "average_score": 144.44,
+        "total_attempts": 3,
+        "completion_time_vs_median": 1.1678,
+        "retry_ratio": 1.5,
+        "score_variance": 52.92,
+        "recent_xp_velocity": 25.7143,
+        "completion_rate": 0.6667,
+        "avg_difficulty": 3.67
+      },
+      "typescript_features": {
+        "days_since_last_active": 0,
+        "activity_frequency": 2,
+        "average_score": 144.44,
+        "total_attempts": 3,
+        "completion_time_vs_median": 1.1678,
+        "retry_ratio": 1.5,
+        "score_variance": 52.92,
+        "recent_xp_velocity": 25.7143,
+        "completion_rate": 0.6667,
+        "avg_difficulty": 3.67
+      },
+      "absolute_differences": {
+        "days_since_last_active": 0.0,
+        "activity_frequency": 0,
+        "average_score": 0.0,
+        "total_attempts": 0,
+        "completion_time_vs_median": 0.0,
+        "retry_ratio": 0.0,
+        "score_variance": 0.0,
+        "recent_xp_velocity": 0.0,
+        "completion_rate": 0.0,
+        "avg_difficulty": 0.0
+      },
+      "passed": true
+    }
+  ]
+}

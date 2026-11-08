@@ -172,8 +172,9 @@ def generate_user_journey(user_id: str, persona: UserPersona, start_date: dateti
     
     return attempts
 
-def simulate_users(num_users: int = 50) -> List[Dict[str, Any]]:
+def simulate_users(num_users: int = 50, seed: int = 42) -> List[Dict[str, Any]]:
     """Simulate multiple users with different personas."""
+    random.seed(seed)
     all_attempts = []
     
     # Distribution of personas

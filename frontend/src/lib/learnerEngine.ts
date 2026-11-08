@@ -13,6 +13,7 @@ import { getOptimalQuestSequence, getAdaptiveDifficultyLevel, selectBestInterven
 import { predictDropRisk, getMLApiStatus } from './mlApiClient';
 import { getUserExperimentGroup, type ExperimentGroup } from './experimentService';
 import type { Quest } from './types';
+import { calculateFeatureVector, DATASET_MEDIAN_TIME, DIFFICULTY_NUMERIC_MAP, type MLFeatures } from './learnerFeatures';
 
 /**
  * RECOMPUTE POLICY (Phase 0 - Defensible AI)
@@ -49,18 +50,7 @@ export type LearnerState = 'STRUGGLING' | 'FAST' | 'CONSISTENT' | 'DROP_RISK' | 
 export const MIN_ATTEMPTS_FOR_ML = 5;
 
 /** Authoritative 10-feature vector matching backend model training order */
-export interface MLFeatures {
-    days_since_last_active: number;
-    activity_frequency: number;
-    average_score: number;
-    total_attempts: number;
-    completion_time_vs_median: number;
-    retry_ratio: number;
-    score_variance: number;
-    recent_xp_velocity: number;
-    completion_rate: number;
-    avg_difficulty: number;
-}
+export type { MLFeatures } from './learnerFeatures';
 
 export interface LearnerMetrics extends MLFeatures {
     avgScore: number;           // Raw average percentage (0–100)
@@ -91,38 +81,25 @@ export interface StateResult {
     experimentGroup?: ExperimentGroup; // A/B test group assignment
 }
 
-/** Difficulty string to numeric scale (1–4) */
-export const DIFFICULTY_NUMERIC_MAP: Record<string, number> = {
-    'beginner': 1,
-    'intermediate': 2,
-    'advanced': 3,
-    'expert': 4
-};
-
-/** Dataset median completion time in seconds, derived empirically from the quest_attempts corpus */
-export const DATASET_MEDIAN_TIME = 599.0;
+/** Difficulty labels map to the authoritative 1–6 model scale. */
+export { DIFFICULTY_NUMERIC_MAP, DATASET_MEDIAN_TIME } from './learnerFeatures';
 
 /**
  * Calculate learner metrics from quest_attempts with unified feature definitions.
  * Conforms strictly to backend/ml_pipeline/engineer_features.py.
  */
 async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Get ALL attempts in last 30 days
+    // Lifetime history is required for model features and cold-start eligibility.
     const { data: attempts, error } = await supabase
         .from('quest_attempts')
         .select('*')
-        .eq('user_id', userId)
-        .gte('started_at', thirtyDaysAgo.toISOString());
+        .eq('user_id', userId);
 
     if (error) {
         console.error('Error fetching attempts:', error);
     }
 
     const safeAttempts = attempts || [];
-    const totalAttempts = safeAttempts.length;
 
     // Fetch quest details for difficulty mapping
     const questIds = [...new Set(safeAttempts.map(a => a.quest_id))];
@@ -139,74 +116,34 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
         );
     }
 
+    const featureAttempts = safeAttempts.map(a => ({ ...a, difficulty: questDifficultyMap.get(a.quest_id) || 1 }));
+    const featureValues = calculateFeatureVector(featureAttempts);
+    const totalAttempts = featureValues.total_attempts;
     const completedAttempts = safeAttempts.filter(a => a.status === 'completed');
-    const successfulCompletions = completedAttempts.length;
 
-    // 1. days_since_last_active (days since latest attempt; 30.0 if zero attempts)
+    // last-ever activity is lifetime; rolling windows are handled by calculateFeatureVector.
     const lastActiveDate = safeAttempts.length > 0
         ? new Date(Math.max(...safeAttempts.map(a => new Date(a.started_at).getTime())))
         : null;
-    const daysSinceLastActive = lastActiveDate
-        ? Math.max(0, (Date.now() - lastActiveDate.getTime()) / (1000 * 60 * 60 * 24))
-        : 30.0;
-
-    // 2. activity_frequency (distinct active calendar dates in 30-day window)
-    const activeDates = new Set(
-        safeAttempts.map(a => new Date(a.started_at).toISOString().split('T')[0])
-    );
-    const activityFrequency = activeDates.size;
-
-    // 3. average_score: in training, normalized by difficulty factor: (score / (diff * 10)) * 100
-    // Also track rawAvgScore (0-100) for standard UI rendering
+    // Convenience metrics used by the UI.
     let rawScoreSum = 0;
-    let normScoreSum = 0;
 
     safeAttempts.forEach(a => {
         const rawScore = Number(a.score) || 0;
-        const diff = questDifficultyMap.get(a.quest_id) || 1;
         rawScoreSum += rawScore;
-        normScoreSum += (rawScore / (diff * 10)) * 100;
     });
 
     const avgScore = totalAttempts > 0 ? rawScoreSum / totalAttempts : 0.0;
-    const normalizedAvgScore = totalAttempts > 0 ? normScoreSum / totalAttempts : 0.0;
-
-    // 4. total_attempts
-    // totalAttempts
-
-    // 5. completion_time_vs_median: user's mean completed time vs platform baseline (599s)
+    const normalizedAvgScore = featureValues.average_score;
     const completedWithTime = completedAttempts.filter(a => a.completion_time && a.completion_time > 0);
     const meanCompletionTime = completedWithTime.length > 0
         ? completedWithTime.reduce((sum, a) => sum + Number(a.completion_time), 0) / completedWithTime.length
         : DATASET_MEDIAN_TIME;
-    const completionTimeVsMedian = meanCompletionTime / DATASET_MEDIAN_TIME;
-
-    // 6. retry_ratio: total attempts / unique quests attempted
-    const uniqueQuestsCount = new Set(safeAttempts.map(a => a.quest_id)).size;
-    const retryRatio = uniqueQuestsCount > 0 ? totalAttempts / uniqueQuestsCount : 1.0;
-
-    // 7. score_variance: sample standard deviation (ddof=1) of scores across attempts
-    let scoreVariance = 0.0;
-    if (totalAttempts > 1) {
-        const varianceSum = safeAttempts.reduce((sum, a) => {
-            const diff = (Number(a.score) || 0) - avgScore;
-            return sum + (diff * diff);
-        }, 0);
-        scoreVariance = Math.sqrt(varianceSum / (totalAttempts - 1));
-    }
-
-    // 8. recent_xp_velocity: sum of scores in trailing 7 days divided by 7.0
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentAttempts = safeAttempts.filter(a => new Date(a.started_at) >= sevenDaysAgo);
-    const recentScoreSum = recentAttempts.reduce((sum, a) => sum + (Number(a.score) || 0), 0);
-    const recentXpVelocity = recentScoreSum / 7.0;
-
-    // 9. completion_rate: completed / total attempts
-    const completionRate = totalAttempts > 0 ? successfulCompletions / totalAttempts : 0.0;
-
-    // 10. avg_difficulty: mean numeric difficulty across attempts
-    const sumDifficulty = safeAttempts.reduce((sum, a) => sum + (questDifficultyMap.get(a.quest_id) || 1), 0);
-    const avgDifficulty = totalAttempts > 0 ? sumDifficulty / totalAttempts : 1.0;
+    const completionTimeVsMedian = featureValues.completion_time_vs_median;
+    const retryRatio = featureValues.retry_ratio;
+    const scoreVariance = featureValues.score_variance;
+    const completionRate = featureValues.completion_rate;
+    const avgDifficulty = featureValues.avg_difficulty;
 
     // Profile XP for streak/gamification checks
     const { data: profile } = await supabase
@@ -217,16 +154,7 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
 
     return {
         // Authoritative 10 ML Features
-        days_since_last_active: Number(daysSinceLastActive.toFixed(2)),
-        activity_frequency: activityFrequency,
-        average_score: Number(normalizedAvgScore.toFixed(2)),
-        total_attempts: totalAttempts,
-        completion_time_vs_median: Number(completionTimeVsMedian.toFixed(4)),
-        retry_ratio: Number(retryRatio.toFixed(4)),
-        score_variance: Number(scoreVariance.toFixed(2)),
-        recent_xp_velocity: Number(recentXpVelocity.toFixed(4)),
-        completion_rate: Number(completionRate.toFixed(4)),
-        avg_difficulty: Number(avgDifficulty.toFixed(2)),
+        ...featureValues,
 
         // Human-readable convenience metrics
         avgScore: Number(avgScore.toFixed(1)),
@@ -238,10 +166,10 @@ async function calculateMetrics(userId: string): Promise<LearnerMetrics> {
         retryRatio: Number(retryRatio.toFixed(2)),
         scoreVariance: Number(scoreVariance.toFixed(2)),
         completionRate: Number(completionRate.toFixed(2)),
-        activityFrequency,
+        activityFrequency: featureValues.activity_frequency,
         avgDifficulty: Number(avgDifficulty.toFixed(2)),
         completionTimeVsMedian: Number(completionTimeVsMedian.toFixed(2)),
-        recentXpVelocity: Number(recentXpVelocity.toFixed(2)),
+        recentXpVelocity: Number(featureValues.recent_xp_velocity.toFixed(2)),
     };
 }
 
@@ -316,7 +244,9 @@ export async function determineLearnerState(userId: string): Promise<StateResult
     // outside the model's training distribution, producing spuriously high risk
     // probabilities (empirically ≥ 0.86 for 1–2 attempts).
     // We bypass ML inference and assign NEW_LEARNER unconditionally in this case.
-    if (metrics.total_attempts < MIN_ATTEMPTS_FOR_ML) {
+    // NEW_LEARNER is reserved for no lifetime history. A dormant learner must
+    // remain distinguishable even when rolling 30-day activity is zero.
+    if (metrics.total_attempts === 0) {
         const experimentGroup = await getUserExperimentGroup(userId, 'ml_vs_heuristic');
         const coldStartDistribution: StateDistribution = {
             'NEW_LEARNER': 1.0000,
@@ -327,7 +257,7 @@ export async function determineLearnerState(userId: string): Promise<StateResult
         };
         return {
             state: 'NEW_LEARNER',
-            reason: `Insufficient interaction history (${metrics.total_attempts} attempt(s)). ML inference requires ≥${MIN_ATTEMPTS_FOR_ML} attempts. Onboarding support is active.`,
+            reason: 'No lifetime quest attempts. Onboarding support is active.',
             metrics,
             confidenceScore: 0.5,
             distribution: coldStartDistribution,

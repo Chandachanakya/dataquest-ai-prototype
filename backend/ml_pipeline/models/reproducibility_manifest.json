@@ -1,0 +1,10 @@
+{
+  "status": "pre-correction artifact inventory; retraining required before deployment",
+  "dataset": {"path": "data/quest_attempts.csv", "sha256": "3E52289A47C30B91CD0D59C180E2F14E46DF2F951BF4F3536B518EBA681FF51A", "rows": 3203},
+  "artifacts": {"random_forest": {"path": "models/drop_risk_rf_v1.pkl", "sha256": "F3F9FB259CF4363C7B4256B715C1B025F0D84945EDD8E5E7B198462410CAAA28"}, "logistic_regression": {"path": "models/drop_risk_lr_v1.pkl", "sha256": "25D38237FEA0B5BCCBB0FB005888D4B778ED95EDE41B1153718FCFC7F3C33DF3"}},
+  "synthetic_data_seed": 42,
+  "training_configuration": {"test_size": 0.2, "random_state": 42, "logistic_regression": {"max_iter": 1000, "class_weight": "balanced"}, "random_forest": {"n_estimators": 100, "max_depth": 10, "min_samples_split": 5, "min_samples_leaf": 2, "class_weight": "balanced", "random_state": 42}},
+  "train_test_split": "stratified when possible; random_state=42; test_size=0.2",
+  "cross_validation": "StratifiedKFold, up to 3 folds, shuffle=true, random_state=42",
+  "model_training_timestamp": "2026-03-22T10:11:38.2112028Z (filesystem timestamp of pre-correction RF artifact)"
+}

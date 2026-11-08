@@ -29,9 +29,10 @@ def load_data(filepath: str = "data/quest_attempts.csv") -> pd.DataFrame:
     return df
 
 
-def calculate_user_features(df: pd.DataFrame) -> pd.DataFrame:
+def calculate_user_features(df: pd.DataFrame, reference_time=None) -> pd.DataFrame:
+    """Create lifetime features evaluated at one explicit snapshot timestamp."""
     df = df.sort_values(['user_id', 'timestamp'])
-    dataset_end = df['timestamp'].max()
+    dataset_end = pd.Timestamp(reference_time) if reference_time is not None else df['timestamp'].max()
     dataset_median_time = df['completion_time'].median()
 
     features_list = []
@@ -46,7 +47,7 @@ def calculate_user_features(df: pd.DataFrame) -> pd.DataFrame:
         days_since_last_active = (dataset_end - latest_ts).total_seconds() / 86400
 
         # 2. activity_frequency
-        window_start = latest_ts - timedelta(days=30)
+        window_start = dataset_end - timedelta(days=30)
         activity_frequency = ud[ud['timestamp'] >= window_start]['timestamp'].dt.date.nunique()
 
         # 3. average_score (difficulty-normalized)
@@ -56,8 +57,10 @@ def calculate_user_features(df: pd.DataFrame) -> pd.DataFrame:
         total_attempts = total_att
 
         # 5. completion_time_vs_median
-        completion_time_vs_median = (ud['completion_time'].mean() / dataset_median_time
-                                     if dataset_median_time > 0 else 1.0)
+        completed_mask = ud['completed'].isin([True, 'True', 1, '1'])
+        completed_times = ud.loc[completed_mask & (ud['completion_time'] > 0), 'completion_time']
+        completion_time_vs_median = (completed_times.mean() / dataset_median_time
+                                     if len(completed_times) and dataset_median_time > 0 else 1.0)
 
         # 6. retry_ratio
         retry_ratio = total_att / unique_quests if unique_quests > 0 else 1.0
@@ -66,7 +69,7 @@ def calculate_user_features(df: pd.DataFrame) -> pd.DataFrame:
         score_variance = ud['score'].std() if total_att > 1 else 0.0
 
         # 8. recent_xp_velocity
-        recent_window      = latest_ts - timedelta(days=7)
+        recent_window      = dataset_end - timedelta(days=7)
         recent_data        = ud[ud['timestamp'] >= recent_window]
         recent_xp_velocity = recent_data['score'].sum() / 7.0
 
