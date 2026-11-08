@@ -11,6 +11,11 @@ interface AIStateVizProps {
 }
 
 const STATE_CONFIG: Record<LearnerState, { label: string; color: string; description: string }> = {
+    'NEW_LEARNER': {
+        label: 'New Learner',
+        color: 'bg-blue-500',
+        description: 'Initial onboarding phase. Complete quests to calibrate AI state analysis.'
+    },
     'CONSISTENT': {
         label: 'Consistent',
         color: 'bg-green-500',
@@ -60,7 +65,7 @@ export const AIStateViz = ({ distribution, confidence, primaryState }: AIStateVi
             <CardContent className="space-y-4">
                 <div className="space-y-3">
                     {sortedStates.map(([state, prob]) => {
-                        const config = STATE_CONFIG[state];
+                        const config = STATE_CONFIG[state] || STATE_CONFIG['NEW_LEARNER'];
                         const percent = (prob * 100).toFixed(0);
                         const isPrimary = state === primaryState;
 

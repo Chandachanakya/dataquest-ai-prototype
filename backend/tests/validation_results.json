@@ -280,7 +280,7 @@
       "raw_avg_score": 69.0
     },
     "max_delta": 0.0,
-    "rf_prob": 0.6981122965638753,
+    "rf_prob": 0.6981122965638751,
     "lr_prob": 0.9997979985492919,
     "rf_risk": "medium",
     "state": "STRUGGLING",

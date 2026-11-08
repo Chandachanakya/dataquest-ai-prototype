@@ -161,7 +161,7 @@ const QuestPage = () => {
     // ── ML dropout prediction → intervention ─────────────────────
     try {
       const mlFeatures = await extractLearnerFeatures(user.id);
-      const mlResult = await predictDropRisk(user.id, mlFeatures as any);
+      const mlResult = await predictDropRisk(user.id, mlFeatures);
       const metrics = await fetchUserMetricsForIntervention(user.id, mlResult?.probability);
 
       if (mlResult) {

@@ -10,8 +10,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getSmartRecommendations, calculateDropRiskScore, type QuestRecommendation, type DropRiskAnalysis } from './smartRecommendations';
 import { getOptimalQuestSequence, getAdaptiveDifficultyLevel, selectBestIntervention, recordInterventionOutcome, type QuestSequence, type DifficultyRecommendation, type InterventionArm } from './reinforcementLearning';
-import { predictDropRisk, predictIntervention, getMLApiStatus } from './mlApiClient';
+import { predictDropRisk, getMLApiStatus } from './mlApiClient';
 import { getUserExperimentGroup, type ExperimentGroup } from './experimentService';
+import type { Quest } from './types';
 
 /**
  * RECOMPUTE POLICY (Phase 0 - Defensible AI)
@@ -23,11 +24,32 @@ import { getUserExperimentGroup, type ExperimentGroup } from './experimentServic
  * This ensures state is always fresh and reflects the most recent learner behavior.
  */
 
-export type LearnerState = 'STRUGGLING' | 'FAST' | 'CONSISTENT' | 'DROP_RISK';
+export type LearnerState = 'STRUGGLING' | 'FAST' | 'CONSISTENT' | 'DROP_RISK' | 'NEW_LEARNER';
+
+/**
+ * COLD-START POLICY (Phase 4)
+ *
+ * The deployed Random Forest was trained on 749 simulated learners, each
+ * having at least 1 attempt and a minimum activity_frequency of 1.
+ * A learner with 0 attempts produces an out-of-distribution feature vector
+ * (activity_frequency = 0, total_attempts = 0, average_score = 0, etc.)
+ * which the model cannot evaluate reliably. Empirically, this produces
+ * a dropout probability of ~0.99 — not because the learner is likely to
+ * drop, but because the input vector lies entirely outside the model's
+ * training distribution.
+ *
+ * Policy: If a learner has fewer than MIN_ATTEMPTS_FOR_ML attempts, skip
+ * ML inference and assign the NEW_LEARNER state with a heuristic
+ * onboarding-appropriate distribution.
+ *
+ * This threshold (5) was chosen empirically: at 5 attempts the model
+ * starts producing discrimination (P ≈ 0.55 for typical early learners),
+ * whereas below 3 attempts the prediction is unreliably high (P > 0.86).
+ */
+export const MIN_ATTEMPTS_FOR_ML = 5;
 
 /** Authoritative 10-feature vector matching backend model training order */
 export interface MLFeatures {
-    [key: string]: number;
     days_since_last_active: number;
     activity_frequency: number;
     average_score: number;
@@ -64,7 +86,7 @@ export interface StateResult {
     metrics: LearnerMetrics;
     confidenceScore: number; // Decision confidence (margin between top states)
     distribution: StateDistribution; // Normalized probability distribution summing to 1.0
-    decisionSource?: 'ml_api' | 'heuristic'; // Track prediction source
+    decisionSource?: 'ml_api' | 'heuristic' | 'cold_start'; // Track prediction source
     mlModelVersion?: string; // ML model version if used
     experimentGroup?: ExperimentGroup; // A/B test group assignment
 }
@@ -288,6 +310,32 @@ export async function determineLearnerState(userId: string): Promise<StateResult
         ? (Date.now() - metrics.lastActiveDate.getTime()) / (1000 * 60 * 60 * 24)
         : 30;
 
+    // ── COLD-START GUARD (Phase 4) ────────────────────────────────────────────
+    // The Random Forest was trained on learners with at least 1 attempt and
+    // activity_frequency ≥ 1. A learner below MIN_ATTEMPTS_FOR_ML sits entirely
+    // outside the model's training distribution, producing spuriously high risk
+    // probabilities (empirically ≥ 0.86 for 1–2 attempts).
+    // We bypass ML inference and assign NEW_LEARNER unconditionally in this case.
+    if (metrics.total_attempts < MIN_ATTEMPTS_FOR_ML) {
+        const experimentGroup = await getUserExperimentGroup(userId, 'ml_vs_heuristic');
+        const coldStartDistribution: StateDistribution = {
+            'NEW_LEARNER': 1.0000,
+            'STRUGGLING': 0.0000,
+            'FAST': 0.0000,
+            'CONSISTENT': 0.0000,
+            'DROP_RISK': 0.0000,
+        };
+        return {
+            state: 'NEW_LEARNER',
+            reason: `Insufficient interaction history (${metrics.total_attempts} attempt(s)). ML inference requires ≥${MIN_ATTEMPTS_FOR_ML} attempts. Onboarding support is active.`,
+            metrics,
+            confidenceScore: 0.5,
+            distribution: coldStartDistribution,
+            decisionSource: 'cold_start',
+            experimentGroup,
+        };
+    }
+
     // PHASE 5: Check experiment assignment
     const experimentGroup = await getUserExperimentGroup(userId, 'ml_vs_heuristic');
     const forceML = experimentGroup === 'treatment';
@@ -473,6 +521,16 @@ export async function determineLearnerState(userId: string): Promise<StateResult
     };
 }
 
+export interface DecisionMetadata {
+    metrics?: LearnerMetrics;
+    distribution?: StateDistribution;
+    topTwoStates?: [string, number][];
+    dropout_probability?: number | null;
+    intervention_case?: string | null;
+    intervention_accepted?: boolean | null;
+    [key: string]: unknown;
+}
+
 /**
  * Log decision to decision_logs table
  * PHASE 4: Now includes decision source (ML vs heuristic) for A/B testing
@@ -485,7 +543,7 @@ async function logDecision(
     action: string,
     reason: string,
     confidenceScore: number,
-    metadata: Record<string, any> = {},
+    metadata: DecisionMetadata = {},
     experimentGroup?: ExperimentGroup
 ) {
     await supabase.from('decision_logs').insert({
@@ -523,6 +581,19 @@ export async function triggerPersonalization(userId: string, stateResult: StateR
     };
 
     switch (state) {
+        case 'NEW_LEARNER':
+            // Action: Onboarding support — route to beginner track, do not trigger retention alerts
+            await logDecision(
+                userId,
+                state,
+                'ONBOARDING_SUPPORT',
+                reason,
+                stateResult.confidenceScore,
+                metadata,
+                experimentGroup
+            );
+            break;
+
         case 'STRUGGLING':
             // Action: Assign revision quest (placeholder - would need quest recommendation logic)
             await logDecision(
@@ -606,7 +677,7 @@ export async function getDropRiskAnalysis(userId: string): Promise<DropRiskAnaly
  * PHASE 2: RL-Based Quest Sequencing
  * Get optimal quest sequence using Q-learning simulation
  */
-export async function getOptimalLearningPath(userId: string, availableQuests: any[]): Promise<QuestSequence[]> {
+export async function getOptimalLearningPath(userId: string, availableQuests: Quest[]): Promise<QuestSequence[]> {
     return await getOptimalQuestSequence(userId, availableQuests);
 }
 

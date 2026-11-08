@@ -6,6 +6,7 @@
  */
 
 import { ML_API_URL, USE_ML_API } from "@/api/config";
+import type { MLFeatures } from "./learnerEngine";
 
 // Types matching API responses
 export interface MLDropRiskResponse {
@@ -41,7 +42,7 @@ export interface MLNextQuestResponse {
  */
 export async function predictDropRisk(
     userId: string,
-    features: Record<string, number> | { [key: string]: number }
+    features: MLFeatures | Record<string, number>
 ): Promise<MLDropRiskResponse | null> {
     if (!USE_ML_API) {
         return null; // Fallback to heuristics

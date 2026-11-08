@@ -109,6 +109,18 @@ async def predict_drop_risk_endpoint(request: DropRiskRequest):
     """
     try:
         features, feature_dict = extract_features(request)
+        total_attempts = feature_dict.get('total_attempts', 0.0)
+
+        # Cold-start policy: Insufficient history to infer dropout risk (< 5 attempts)
+        if total_attempts < 5.0:
+            return DropRiskResponse(
+                user_id=request.user_id,
+                probability=0.0,
+                risk_level="low",
+                model_version=f"{MODEL_VERSION}:cold_start",
+                timestamp=datetime.now().isoformat(),
+                features_used=feature_dict,
+            )
 
         if USE_REAL_MODEL and drop_risk_model is not None:
             probability = predict_drop_risk(drop_risk_model, features)

@@ -92,6 +92,11 @@ const Dashboard = () => {
             const stateInsights: string[] = [];
 
             switch (stateResult.state) {
+              case 'NEW_LEARNER':
+                stateInsights.push("👋 Welcome to DataQuest AI! Start with foundational quests to calibrate your profile.");
+                stateInsights.push("🎯 Complete your first 5 quests to unlock personalized AI intelligence.");
+                stateInsights.push("🚀 Earn XP and build your learning streak each day!");
+                break;
               case 'STRUGGLING':
                 stateInsights.push(`📚 We noticed you might need some help. Your avg score is ${stateResult.metrics.avgScore.toFixed(1)}%.`);
                 stateInsights.push("💡 Try reviewing foundational concepts before moving forward.");
